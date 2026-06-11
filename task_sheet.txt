@@ -1,0 +1,149 @@
+
+ArgosMob Tech & AI Pvt. Ltd.
+
+DEVELOPER TASK SHEET
+B2B Vendor & Retailer Management Platform
+
+Client: Mr. Ajay  |  Project Code: AMB-DMP-2026
+Stack: React Native CLI (Frontend)  •  Python / FastAPI (Backend)  •  PostgreSQL (Database)
+Prepared By: ArgosMob Tech & AI Pvt. Ltd.  |  April 2026
+
+
+CONFIDENTIAL — FOR INTERNAL DEVELOPMENT USE ONLY
+
+How to Use This Task Sheet
+This document is the single source of truth for development execution. Work top-to-bottom, phase by phase. Backend must be fully functional and API-tested before any frontend screen is wired to live data.
+
+
+Execution Order — Non-Negotiable
+Complete ALL of Phase 1 (Environment & Database) before writing any API code.
+Complete ALL of Phase 2 (Auth & Core APIs) before touching React Native.
+Run Phase 3 (Business Logic APIs) and Phase 4 (Integrations) backend-first, then connect frontend.
+Phase 5 (React Native) wires screens to already-tested APIs — no mock data in final build.
+Phase 6 (Admin Panel) runs in parallel with Phase 5 frontend.
+UI polish / design enhancement is explicitly out of scope for this task sheet — that is a separate sprint.
+
+
+Phase 1 — Environment Setup & Database Design
+Foundation work. Nothing else starts until this phase is complete and peer-reviewed.
+
+
+Phase 1 Completion Checklist
+All tables created with correct FK constraints and indexes
+Alembic migrate up/down tested successfully
+Seed script runs without errors
+FastAPI /health endpoint returns 200
+Docker-compose brings up API + DB locally
+
+
+Phase 2 — Authentication & User Management APIs
+All roles — Super Admin, Admin, Vendor (Wholesaler), Retailer — are handled here. JWT issuance, OTP flows, and RBAC middleware must be complete before any feature API is built.
+
+
+Phase 2 Completion Checklist
+All 4 roles can authenticate and receive valid JWT
+RBAC middleware blocks unauthorized role access with 403
+OTP flow tested end-to-end with real SMS
+Vendor created by Admin, Retailer self-registers — both flows tested
+Blocked user cannot call any protected endpoint
+
+
+Phase 3 — Core Business Logic APIs
+Product catalog, ordering, ledger, and pricing. These are the heart of the platform. Build in the order listed — each section depends on the previous.
+
+3A — Product & Category Management
+
+3B — Cart & Order Management
+
+3C — Payment & Ledger
+
+3D — Invoice Engine
+
+3E — Discounts & Schemes
+
+
+Phase 4 — Integrations & Infrastructure APIs
+
+
+Phase 4 Completion Checklist
+FCM push notification delivered to a real device for order placement
+WhatsApp message delivered on order confirmation (sandbox test)
+File upload returns CDN URL, image resized correctly
+Audit log records every admin action
+All report endpoints return data and export to Excel/PDF
+
+
+Phase 5 — React Native CLI Frontend (Mobile App)
+Wire screens to already-tested backend APIs. No screen should use mock/hardcoded data in the final build. UI polish is out of scope for this phase — focus on functional correctness.
+
+5A — Project Setup & Navigation
+
+5B — Onboarding & Auth Screens
+
+5C — Product Browsing (Vendor & Retailer)
+
+5D — Cart & Checkout
+
+5E — Retailer-Specific Screens
+
+5F — Notifications & Common
+
+
+Phase 6 — Admin Web Panel (React JS)
+Browser-based panel. Can be developed in parallel with Phase 5 once Phase 3 & 4 APIs are stable. All modules consume the same FastAPI backend.
+
+
+
+Testing Requirements
+
+Backend (Python / pytest)
+Unit tests for all service-layer functions (not just routers)
+Integration tests for all [TEST]-tagged tasks — minimum: auth flows, order placement atomicity, credit limit enforcement, OTP rate limiting
+Payment gateway: sandbox mode test with Razorpay test keys; test success, failure, and webhook replay
+Load test: simulate 100 concurrent order placements — zero deadlock tolerance on stock decrement
+Run pytest --cov and maintain > 70% coverage on /services directory
+
+Mobile App (React Native)
+Manual E2E test on real device (Android) and iOS Simulator for all critical flows
+Critical flows requiring sign-off before release: OTP registration, Add to Cart → Pay → Invoice, Ledger balance update, Credit limit block
+Verify FCM push notification delivery on both platforms
+Test offline state: app must not crash, must show banner, must retry on reconnect
+
+Admin Panel
+Cross-browser test: Chrome, Firefox, Safari, Edge — all modules
+Verify role guard: Admin login must not access Super Admin routes
+Test Excel bulk upload with valid file, file with errors, and empty file
+
+
+Deliverables Checklist
+
+
+
+Important Notes for Developer
+
+Stack Divergence from Signed BRD
+The client-facing BRD specifies Node.js + Supabase for the backend. This task sheet uses Python / FastAPI + PostgreSQL as directed by ArgosMob internally. Ensure the client (Mr. Ajay) is informed of this change so there are no expectation gaps at delivery or during future maintenance handoff.
+
+Never Hardcode — Ever
+All API base URLs, secret keys, payment gateway keys, FCM server keys, WhatsApp API tokens, SMS provider credentials MUST live in .env
+Commit .env.example with placeholder values; .env is gitignored
+No rupee symbol in code strings — use 'INR' prefix
+
+Database Rules
+Never delete records — use soft delete (is_deleted BOOLEAN, deleted_at TIMESTAMP)
+All monetary values stored as INTEGER in paise (not FLOAT) to avoid floating point errors
+Every table must have created_at and updated_at with auto-timestamp triggers
+Foreign key constraints enforced at DB level, not just application level
+
+Security Non-Negotiables
+JWT access tokens: 15 min expiry. Refresh tokens: 7 days, single-use, stored hashed in DB
+OTP: stored as bcrypt hash, never plaintext; 5-min TTL enforced at DB level via expires_at column
+All file upload endpoints: validate MIME type server-side (not just extension); reject executables
+RBAC enforced at service layer; never rely solely on frontend to hide routes
+Payment webhook: verify Razorpay signature before processing; reject unverified webhooks with 400
+
+Performance Targets (as per BRD)
+API response time < 2 seconds for standard requests
+App load time < 3 seconds on 4G network
+Backend must handle 10,000+ concurrent PostgreSQL connections (Supabase/pgBouncer configured)
+99.5% uptime target — configure health check endpoint for hosting provider monitoring

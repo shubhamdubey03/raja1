@@ -1,0 +1,158 @@
+
+=== TABLE 1 ===
+Total Phases | Est. Backend Days | Est. Frontend Days | Total Est. Days
+6 | 28–32 | 20–25 | 50–60
+
+=== TABLE 2 ===
+Symbol / Tag | Meaning
+HIGH | Blocking task — must be completed before next phase begins
+MEDIUM | Important task, some parallel work possible
+LOW | Non-blocking; can be deferred within phase
+[API] | Task produces a REST endpoint — document in Postman immediately after
+[TEST] | Task must have test coverage before marking done
+
+=== TABLE 3 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P1-01 | Dev Environment Setup | Python 3.11+, FastAPI, Uvicorn, PostgreSQL 15, pgAdmin, Git repo initialised, .env structure defined, pre-commit hooks configured | 1 | HIGH | Use python-dotenv; never hardcode secrets
+P1-02 | Database Schema Design | Design all tables: users, vendors, retailers, products, categories, orders, order_items, payments, invoices, notifications, ledger, discount_codes, audit_log, admin_users. Define FK constraints, indexes, and RLS rules | 3 | HIGH | Use dbdiagram.io or draw.io; get schema reviewed before migration
+P1-03 | Alembic Migrations Setup | Initialise Alembic for version-controlled migrations; create initial migration from schema; document rollback procedure | 1 | HIGH | Tag each migration with task ID
+P1-04 | Supabase / PostgreSQL Connection | Configure SQLAlchemy async connection pool to PostgreSQL (Supabase); test connection; set max pool size; configure SSL | 1 | HIGH | Use asyncpg driver for async support
+P1-05 | Project Structure | Establish FastAPI project structure: /routers, /models, /schemas (Pydantic), /services, /utils, /tests; configure CORS; setup logging with structlog | 1 | HIGH | Separate router per domain (auth, vendor, retailer, order, product, admin)
+P1-06 | Seed Data Script | Create seed script for: 1 Super Admin, sample categories, sample products, 1 Vendor, 1 Retailer for testing all subsequent API tasks | 1 | MEDIUM | Store seed credentials in .env.test
+P1-07 | CI/CD Basic Pipeline | GitHub Actions: lint (flake8), run pytest on push to main; Dockerfile for backend; docker-compose for local dev with PostgreSQL | 1 | LOW | Can refine post MVP but set up skeleton now
+
+=== TABLE 4 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P2-01 | JWT Middleware | Implement JWT access + refresh token system using python-jose; token expiry: access 15 min, refresh 7 days; blacklist refresh tokens on logout via Redis or DB table | 2 | HIGH | [API] POST /auth/token/refresh
+P2-02 | RBAC Dependency | FastAPI dependency: get_current_user() returns role-aware user object; role guard decorators: require_super_admin, require_admin, require_vendor, require_retailer | 1 | HIGH | [TEST] Unit test each role guard with forged tokens
+P2-03 | Super Admin Auth | Hardcoded Super Admin seeded in DB; POST /admin/auth/login; returns JWT with role=super_admin; change password endpoint | 1 | HIGH | [API]
+P2-04 | Admin Management (Super Admin) | Super Admin creates/deactivates Admin accounts; POST /admin/users, GET /admin/users, PATCH /admin/users/{id}/status; activity log entry on each action | 1 | HIGH | [API] Super Admin only
+P2-05 | Vendor Auth (Admin-Created) | Admin POSTs to create Vendor account; system sends OTP via SMS to Vendor mobile; Vendor verifies OTP to set password; POST /vendor/auth/login; POST /vendor/auth/otp/verify | 2 | HIGH | [API] Vendor cannot self-register
+P2-06 | Retailer Self-Registration | POST /retailer/auth/register — accepts Business Name, Owner Name, Mobile, Location, GST (optional), Business Type; triggers OTP to mobile; POST /retailer/auth/otp/verify activates account immediately; Welcome SMS sent on success | 2 | HIGH | [API][TEST]
+P2-07 | OTP Service | Centralised OTP service: generate 6-digit OTP, store hashed in DB with 5-min TTL, verify, 3-attempt limit, 60-sec resend cooldown; POST /otp/send, POST /otp/verify | 2 | HIGH | Abstract SMS provider — use MSG91 or Twilio; configurable via .env
+P2-08 | Profile APIs | GET /me, PATCH /me for all roles; change mobile number (triggers new OTP); PATCH /me/password; soft-delete / account deactivation | 1 | MEDIUM | [API]
+P2-09 | Admin Block / Unblock Users | PATCH /admin/vendors/{id}/status, PATCH /admin/retailers/{id}/status; blocked user receives 403 on next API call; audit log entry | 1 | HIGH | [API]
+P2-10 | Geo-location Tagging on Registration | Accept lat/lng on Vendor and Retailer registration; store in PostGIS-enabled column or as JSONB; used for future verification; not displayed in MVP UI | 1 | MEDIUM | Use PostGIS extension or store as {lat, lng} JSONB
+
+=== TABLE 5 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P3-01 | Category CRUD | Admin: POST/GET/PATCH/DELETE /categories; nested subcategories (parent_id); visibility toggle per role (Vendor / Retailer); slug auto-generated | 1 | HIGH | [API]
+P3-02 | Product CRUD | Admin: full CRUD /products; fields: name, description, images[], category_id, unit, stock_qty, base_price, GST rate (0/5/12/18/28%), status (active/hidden), low_stock_threshold; Vendor: read-only product listing | 2 | HIGH | [API] Images stored as URLs (S3 / Supabase Storage)
+P3-03 | Role-Based Pricing | Separate price tables: vendor_pricing and retailer_pricing linked to product_id; Admin sets prices per role; bulk price update endpoint PATCH /products/bulk-price | 2 | HIGH | [API] Retailer sees retailer price; Vendor sees vendor price — never cross-exposed
+P3-04 | Dealer-Specific Pricing Override | Admin can set custom price for a specific Vendor or Retailer overriding the role-based price; stored in dealer_pricing table with precedence: dealer > role > base | 1 | MEDIUM | [API]
+P3-05 | Product Search & Filter | GET /products with query params: keyword, category_id, price_min, price_max, in_stock, sort (price_asc, price_desc, newest, popular); full-text search via PostgreSQL tsvector | 2 | HIGH | [API][TEST] Index tsvector column
+P3-06 | Inventory Management | Stock decrement on order confirm; low-stock alert trigger (store event in notifications table); Manual stock adjustment by Admin: PATCH /products/{id}/stock with audit_log entry | 2 | HIGH | [API]
+P3-07 | Excel Bulk Upload — Products | Admin: POST /products/bulk-upload; accept .xlsx; parse with openpyxl; validate rows (required fields, GST rate whitelist, duplicate SKU check); return error report for invalid rows | 2 | MEDIUM | [API] Template .xlsx provided in deliverables
+
+=== TABLE 6 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P3-08 | Cart API | POST /cart/add, PATCH /cart/items/{id}, DELETE /cart/items/{id}, GET /cart; cart is user-session-persistent in DB; price snapshot on add (not recalculated dynamically) | 2 | HIGH | [API]
+P3-09 | Minimum Order Value (MOV) Enforcement | Admin configures global MOV, role-level MOV, category-level MOV; GET /cart/validate returns {valid, reason, shortfall_amount}; enforced on order placement | 1 | HIGH | [API]
+P3-10 | Order Placement | POST /orders; creates order record + order_items; reserves stock; triggers invoice generation (async); sends push notification; returns order_id + status=pending; DB transaction — atomic | 3 | HIGH | [API][TEST] Test partial stock failure rollback
+P3-11 | Order Status Management | Admin: PATCH /admin/orders/{id}/status — values: confirmed, dispatched, delivered, cancelled; each status change: push notification + audit log; cancellation releases reserved stock | 2 | HIGH | [API]
+P3-12 | Order History & Detail | GET /orders (with filters: date range, status, role); GET /orders/{id} with all line items, payment status, invoice link; Admin: GET /admin/orders with cross-user filters | 1 | MEDIUM | [API]
+P3-13 | Credit Limit & Auto-Block (Retailer) | Admin sets credit_limit per Retailer in DB; on order placement, outstanding balance checked; if balance >= credit_limit: order blocked with 402 + reason; PATCH /admin/retailers/{id}/credit-limit | 2 | HIGH | [API][TEST]
+
+=== TABLE 7 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P3-14 | Payment Gateway Integration | Integrate Razorpay (default; switchable via .env to Cashfree/PayU); POST /payments/initiate creates order on gateway; POST /payments/verify validates signature + updates payment record; webhook handler for async confirmation | 3 | HIGH | [API][TEST] Test with sandbox before prod keys
+P3-15 | Manual Payment Entry | Admin: POST /admin/payments/manual — record offline cash/cheque payment against a Retailer account; updates ledger; triggers push notification to Retailer | 1 | MEDIUM | [API]
+P3-16 | Ledger Engine | Every order (debit) and payment (credit) appends a ledger_entry row with running balance; GET /ledger (Retailer: own; Admin: any retailer_id); balance recalculated on-the-fly from entries — no denormalised balance field | 2 | HIGH | [API][TEST]
+P3-17 | Overdue Alerts & Auto Credit Block | Cron job (APScheduler): daily check — if outstanding > 0 and overdue > 7 days: push notification + SMS; if > 30 days: auto-block account (status=credit_blocked); Admin can manually unblock | 2 | HIGH | Use APScheduler with FastAPI lifespan
+P3-18 | Ledger Export (PDF/CSV) | GET /ledger/export?format=pdf|csv&from=&to=; PDF via ReportLab; CSV via Python csv module; Retailer: own data only; Admin: any retailer | 2 | MEDIUM | [API]
+
+=== TABLE 8 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P3-19 | Auto GST Invoice Generation | On order confirmation: generate GST-compliant PDF invoice using ReportLab; fields: ArgosMob branding, order_id, invoice_no (sequential), buyer/seller GSTIN, line items with HSN/SAC, GST breakup (CGST+SGST or IGST), grand total; store PDF in S3/Supabase Storage | 3 | HIGH | Run async via background task — do not block order API response
+P3-20 | Manual Invoice Generation | Admin: POST /admin/invoices/manual for offline orders; same PDF engine as P3-19; invoice linked to order or standalone | 1 | MEDIUM | [API]
+P3-21 | Invoice Download API | GET /invoices/{invoice_id}/download — returns signed URL or streams PDF; Bulk: GET /invoices/bulk-download?from=&to= — returns ZIP | 1 | MEDIUM | [API]
+P3-22 | E-Way Bill Support (Stub) | Schema includes eway_bill_no and eway_bill_url fields on orders table; Admin can manually enter e-way bill number via PATCH /admin/orders/{id}/eway-bill; full e-way bill API integration is Phase 2 scope | 1 | LOW | Stub only — document full integration as CR
+
+=== TABLE 9 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P3-23 | Discount Code Engine | Admin: POST /admin/discounts — type: flat|percentage; validity dates; min order value; max usage count; product-level or category-level scope; POST /cart/apply-coupon validates and applies; code usage tracked | 2 | MEDIUM | [API]
+P3-24 | Dealer-Specific Schemes | Admin: create volume discount (buy X qty get Y% off) and buy-X-get-Y schemes per dealer or dealer group; applied at cart validation; stored in dealer_schemes table | 2 | MEDIUM | [API]
+
+=== TABLE 10 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P4-01 | Push Notification Service | Integrate Firebase Cloud Messaging (FCM); store device tokens on login; NotificationService class with send_to_user(), send_to_role(), send_bulk(); notifications stored in notifications table with delivery status; Admin: POST /admin/notifications/send | 2 | HIGH | [API] All order/payment/alert triggers call this service
+P4-02 | WhatsApp Integration | Integrate WhatsApp Business API (Interakt / AiSensy / official WABA); trigger on: order placed, order status change, invoice ready, payment confirmation, overdue reminder; template messages pre-approved; configurable toggle per event type | 2 | HIGH | [API] Client to provide WhatsApp Business account
+P4-03 | SMS OTP & Alert Gateway | SMS service abstraction layer; primary: MSG91 (DLT registered); fallback: Twilio; used for OTP + overdue alerts; rate limiting on send endpoint; DLT template IDs configurable in .env | 1 | HIGH | Abstract interface — easy to swap provider
+P4-04 | File Upload Service | POST /uploads/image — validate type (jpg/png/webp), max 5MB, resize to 800px max dimension using Pillow, store in Supabase Storage / S3, return CDN URL; POST /uploads/document for PDFs | 1 | MEDIUM | [API]
+P4-05 | Automatic DB Backup | Configure pg_dump cron via APScheduler or external cron: daily full backup to S3 bucket; retain 7 days; backup success/failure logged to audit_log; provide restore runbook in documentation | 1 | MEDIUM | Supabase handles this natively if using Supabase hosting
+P4-06 | Audit Log API | All admin actions (create/edit/delete product, block user, price change, order status change, manual payment) append to audit_log table: {actor_id, role, action, entity_type, entity_id, diff_json, timestamp}; GET /admin/audit-log with filters | 1 | HIGH | [API] Enforced via service layer, not at router level
+P4-07 | Reports & Analytics API | GET /admin/reports/sales?range=daily|weekly|monthly|custom; GET /admin/reports/dealer-performance; GET /admin/reports/product-sales; all exportable as Excel (openpyxl) and PDF (ReportLab); data aggregated via PostgreSQL window functions | 3 | MEDIUM | [API]
+P4-08 | Load & Concurrency Config | Configure Uvicorn with 4 workers; set PostgreSQL connection pool max=20; add rate limiting middleware (slowapi) on auth endpoints (10 req/min) and OTP endpoints (3 req/min); document concurrency limits in README | 1 | MEDIUM | Gunicorn + Uvicorn workers in production
+P4-09 | Voice Order Placement (Stub) | Schema placeholder: orders table has voice_order BOOLEAN, voice_clip_url TEXT; actual voice-to-text processing deferred to Phase 2; document integration approach using Google Speech-to-Text API | 1 | LOW | Stub only — Phase 2 CR
+
+=== TABLE 11 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P5-01 | RN CLI Project Init | React Native CLI (not Expo); TypeScript; folder structure: /screens, /components, /navigation, /services (API clients), /store (Redux Toolkit), /utils, /hooks; configure absolute imports via tsconfig paths | 1 | HIGH | Target: iOS 13+, Android 8+
+P5-02 | Navigation Setup | React Navigation v6: Stack + Bottom Tab navigators; Role-aware navigation tree: unauthenticated (Role Select, Login, Register, OTP), Vendor stack, Retailer stack; deep link config skeleton | 1 | HIGH | Use React Navigation native stack for performance
+P5-03 | Redux Toolkit + API Client | Redux Toolkit store; RTK Query for all API calls (auto caching, invalidation); base URL from env; JWT interceptor: auto-attach access token, auto-refresh on 401, logout on refresh failure | 2 | HIGH | [TEST] Test token refresh flow
+P5-04 | Async Storage + Secure Store | Store JWT tokens in Expo SecureStore or react-native-keychain (NOT AsyncStorage for tokens); user profile in Redux persisted via redux-persist to AsyncStorage | 1 | HIGH | Tokens must never be in AsyncStorage
+
+=== TABLE 12 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P5-05 | Role Selection Screen | Full-screen role picker: Vendor (Wholesaler) vs Retailer (Small Shop); clear iconography; navigates to respective login/register flow | 1 | HIGH | 
+P5-06 | Vendor Login + OTP Screens | Login: mobile number input → OTP screen with 6-digit input, 60-sec resend timer, 3-attempt limit UI; on success: dispatch auth state, navigate to Vendor Home | 2 | HIGH | Wire to P2-05 APIs
+P5-07 | Retailer Registration + OTP Screens | Multi-step form: Business Name, Owner Name, Mobile, Business Type, GST (optional), Location (map picker + manual); OTP verification screen; immediate access on success | 3 | HIGH | Wire to P2-06 APIs; use react-native-maps for location
+P5-08 | Profile Screen | View/edit profile; change mobile (re-OTP); change password; logout; account deletion (confirmation modal) | 1 | MEDIUM | Wire to P2-08 APIs
+
+=== TABLE 13 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P5-09 | Home Screen | Banner carousel (3 images max); category horizontal scroll; featured products grid; pull-to-refresh; skeleton loading states | 2 | MEDIUM | Wire to P3-01, P3-02 APIs; role-aware pricing display
+P5-10 | Category & Product Listing Screen | Category filter tabs; product cards (image, name, price, stock badge); infinite scroll pagination (page size 20); sort & filter bottom sheet: price, category, availability | 2 | HIGH | Wire to P3-05 API
+P5-11 | Product Detail Screen | Image gallery (swipeable); name, description, specs; role-based price display; stock status; quantity selector; Add to Cart button; related products row | 2 | HIGH | Wire to P3-02, P3-03 APIs
+P5-12 | Search Screen | Search bar with debounce (300ms); recent searches (local); results list reusing product card component; empty state | 1 | MEDIUM | Wire to P3-05 API
+
+=== TABLE 14 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P5-13 | Cart Screen | Cart items list; quantity stepper; item remove; price summary (subtotal, GST, grand total); MOV validation warning banner; Proceed to Checkout button (disabled if MOV not met) | 2 | HIGH | Wire to P3-08, P3-09 APIs
+P5-14 | Checkout Screen | Address selection / add new address; order summary; coupon code input; final price breakdown; Place Order CTA | 2 | HIGH | Wire to P3-10 API
+P5-15 | Payment Screen | Razorpay React Native SDK integration; handle success/failure callbacks; success screen with order ID + summary; failure screen with retry option | 2 | HIGH | Wire to P3-14 APIs; use razorpay-react-native package
+P5-16 | Order Confirmation & History | Order confirmation screen; Order list with status filter chips; Order detail screen with line items, payment status, invoice download button | 2 | HIGH | Wire to P3-12 APIs
+
+=== TABLE 15 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P5-17 | Ledger Screen | Running balance header (color-coded: green/amber/red); ledger entries list (debit/credit); date-range filter; outstanding amount prominent; PDF/CSV export button | 2 | HIGH | Wire to P3-16, P3-18 APIs
+P5-18 | Invoice List & Download | Invoice history list with date/amount; tap to download PDF (open in device viewer); bulk download for date range | 1 | MEDIUM | Wire to P3-21 API
+P5-19 | Credit Limit Warning | Inline warning banner on cart/checkout if approaching credit limit (80% threshold); hard block UI if limit breached with 'Contact Admin' message | 1 | HIGH | Wire to P3-13 API response codes
+
+=== TABLE 16 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P5-20 | Push Notification Handler | react-native-firebase FCM; handle foreground + background + quit state messages; deep link to relevant screen on tap (order, payment, alert) | 2 | HIGH | Wire to P4-01
+P5-21 | Notifications List Screen | In-app notification centre; unread badge on tab; mark as read; empty state | 1 | MEDIUM | Wire to P4-01 notifications table API
+P5-22 | Help & Support Screen | FAQ accordion list (content from Admin panel); WhatsApp support deep link; email support link | 1 | LOW | Static FAQ for MVP; Admin-editable in Phase 2
+P5-23 | Offline & Error Handling | No-network banner using NetInfo; API error boundary with retry option; loading skeletons on all list screens; graceful empty states | 1 | HIGH | 
+
+=== TABLE 17 ===
+# | Task | Description / Deliverables | Est. Days | Priority | Notes
+P6-01 | Admin Panel Setup | React JS (Vite), TypeScript, Ant Design component library, React Query for API calls, React Router v6, Axios with JWT interceptor; role-aware route guards for Super Admin vs Admin | 1 | HIGH | 
+P6-02 | Login & Auth | Login page for Super Admin and Admin; JWT storage in httpOnly cookie (not localStorage); session expiry handling; 2FA scaffold (optional toggle) | 1 | HIGH | Wire to P2-03, P2-04 APIs
+P6-03 | Dashboard | KPI cards: total orders, revenue, active vendors, active retailers, pending onboarding; line chart (revenue trend); bar chart (top products); date range picker; real-time refresh every 60s | 2 | HIGH | Wire to P4-07 reports API
+P6-04 | Vendor Management | Vendor list with search/filter; create Vendor form (triggers OTP to Vendor); view Vendor profile + product listings + sales; block/unblock; set product listing permissions; dealer-specific pricing config | 2 | HIGH | Wire to P2-05, P3-03 APIs
+P6-05 | Retailer Management | Retailer list with search; view order history per Retailer; block/unblock; set/edit credit limit; export list to Excel | 2 | HIGH | Wire to P2-09, P3-13 APIs
+P6-06 | Product & Category Management | Category tree manager; product CRUD form with image upload; GST rate selector; stock level display; bulk price update; Excel bulk upload for products; stock adjustment with audit trail | 3 | HIGH | Wire to P3-01 through P3-07 APIs
+P6-07 | Order Management | Unified order table with filters (date, status, user type); order detail modal; status update dropdown (Confirm / Dispatch / Deliver / Cancel); inline invoice view | 2 | HIGH | Wire to P3-11, P3-12 APIs
+P6-08 | Invoice & GST Management | Auto-generated invoice list; manual invoice creation form; GST category manager; bulk download as ZIP; E-way bill number entry per order | 2 | HIGH | Wire to P3-19 through P3-22 APIs
+P6-09 | Payment Tracking | Payment transaction table with status filter; reconciliation view (orders vs payments); manual payment entry form; export payment report to Excel/PDF | 2 | MEDIUM | Wire to P3-14, P3-15 APIs
+P6-10 | Discount & Scheme Module | Discount code form (flat/percentage, validity, MOV, scope); scheme builder (volume, buy-X-get-Y); dealer-specific scheme assignment; active scheme list with toggle | 2 | MEDIUM | Wire to P3-23, P3-24 APIs
+P6-11 | Notifications Manager | Compose push notification; target: all users, all dealers, specific segment; schedule for later; delivery log table | 1 | MEDIUM | Wire to P4-01 API
+P6-12 | Reports & Analytics | Sales report with chart + table; dealer performance report; product-wise report; all exportable; date range filter; print-friendly layout | 2 | MEDIUM | Wire to P4-07 API
+P6-13 | Audit Log Viewer | Searchable audit log table: actor, action, entity, timestamp, diff; filter by admin, date, action type; export to Excel | 1 | MEDIUM | Wire to P4-06 API
+P6-14 | Admin User Management | Super Admin: create/deactivate Admin accounts; role list; activity log per admin; password reset | 1 | HIGH | Wire to P2-04 API; Super Admin only route
+
+=== TABLE 18 ===
+Deliverable | Format / Location
+Python/FastAPI backend source code | GitHub private repo /backend
+React Native CLI mobile app source code | GitHub private repo /mobile
+React JS admin panel source code | GitHub private repo /admin
+PostgreSQL schema + Alembic migrations | /backend/migrations + schema diagram PDF
+Postman collection (all APIs) | Exported .json in /docs/postman
+API documentation (Swagger / OpenAPI) | Auto-generated at /docs endpoint
+Deployment guide (backend + admin + app) | /docs/deployment-guide.md
+Admin user manual | /docs/admin-manual.pdf
+Excel bulk upload templates (products, pricing) | /docs/templates/
+Signed APK (Android) + IPA (iOS) | Delivered to client for store submission
+Seed script + .env.example | /backend/scripts/seed.py
