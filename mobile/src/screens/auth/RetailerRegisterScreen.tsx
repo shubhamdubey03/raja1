@@ -3,7 +3,7 @@
  * Multi-step: Business details → OTP → immediate access
  */
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, SafeAreaView, ScrollView, Alert} from 'react-native';
+import {View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TouchableOpacity} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import api from '../../services/api';
 import {setCredentials} from '../../store/slices/authSlice';
@@ -111,6 +111,9 @@ const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
             <Input label="City" value={form.city} onChangeText={t => update('city', t)} placeholder="Mumbai" />
             <Input label="State" value={form.state} onChangeText={t => update('state', t)} placeholder="Maharashtra" />
             <Button label="Register & Send OTP" onPress={handleRegister} loading={loading} />
+            <TouchableOpacity onPress={() => navigation.navigate('VendorLogin', {role: 'retailer'})} style={styles.signInLink}>
+              <Text style={styles.signInText}>Already registered? Sign In</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
@@ -143,6 +146,8 @@ const styles = StyleSheet.create({
   prefix: {backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, marginTop: 22},
   prefixText: {fontSize: Typography.base, fontWeight: '600', color: Colors.textPrimary},
   resend: {textAlign: 'center', color: Colors.primary, fontWeight: '600', marginTop: Spacing.md, fontSize: Typography.sm},
+  signInLink: {marginTop: Spacing.md, alignSelf: 'center'},
+  signInText: {color: Colors.secondary, fontWeight: '600', fontSize: Typography.sm},
 });
 
 export default RetailerRegisterScreen;

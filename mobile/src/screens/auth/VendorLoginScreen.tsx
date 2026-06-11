@@ -1,9 +1,9 @@
 /**
- * P5-06 — Vendor Login + OTP flow
- * Mobile → OTP → dispatch auth → Vendor Home
+ * P5-06 — Login Screen (unified Vendor + Retailer)
+ * Mobile → OTP → dispatch auth → Home
  */
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, SafeAreaView, ScrollView, Alert} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TouchableOpacity} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import api from '../../services/api';
 import {setCredentials} from '../../store/slices/authSlice';
@@ -12,17 +12,25 @@ import {Button, Input} from '../../components';
 import {Colors, Typography, Spacing, Radius} from '../../theme';
 
 interface Props {
+  route?: any;
   navigation: NativeStackNavigationProp<any>;
 }
 
-const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
+const VendorLoginScreen: React.FC<Props> = ({route, navigation}) => {
   const dispatch = useAppDispatch();
+  const [role, setRole] = useState<'vendor' | 'retailer'>(route?.params?.role || 'vendor');
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [otpId, setOtpId] = useState('');
   const [timer, setTimer] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.role) {
+      setRole(route.params.role);
+    }
+  }, [route?.params?.role]);
 
   const startTimer = () => {
     setTimer(60);
@@ -41,7 +49,12 @@ const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
     }
     setLoading(true);
     try {
-      const res = await api.post('/vendor/auth/login', {mobile: `+91${mobile}`});
+      let res;
+      if (role === 'vendor') {
+        res = await api.post('/vendor/auth/login', {mobile: `+91${mobile}`});
+      } else {
+        res = await api.post('/otp/send', {mobile: `+91${mobile}`, purpose: 'login'});
+      }
       setOtpId(res.data.otp_id || '');
       setStep('otp');
       startTimer();
@@ -59,16 +72,21 @@ const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
     }
     setLoading(true);
     try {
-      const res = await api.post('/vendor/auth/otp/verify', {mobile: `+91${mobile}`, otp});
+      let res;
+      if (role === 'vendor') {
+        res = await api.post('/vendor/auth/otp/verify', {mobile: `+91${mobile}`, otp});
+      } else {
+        res = await api.post('/retailer/auth/otp/verify', {mobile: `+91${mobile}`, otp, purpose: 'login'});
+      }
       const profile = await api.get('/me', {
         headers: {Authorization: `Bearer ${res.data.access_token}`},
       });
       dispatch(setCredentials({
         accessToken: res.data.access_token,
         refreshToken: res.data.refresh_token,
-        user: {...profile.data, role: 'vendor'},
+        user: {...profile.data, role: role},
       }));
-      navigation.replace('VendorTab');
+      navigation.replace(role === 'vendor' ? 'VendorTab' : 'RetailerTab');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Invalid OTP');
     } finally {
@@ -76,12 +94,33 @@ const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
     }
   };
 
+  const roleColor = role === 'vendor' ? Colors.primary : Colors.secondary;
+  const roleBgColor = role === 'vendor' ? Colors.primaryLight : Colors.secondaryLight;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.back} onPress={() => step === 'otp' ? setStep('mobile') : navigation.goBack()}>← Back</Text>
+        <Text style={[styles.back, {color: roleColor}]} onPress={() => step === 'otp' ? setStep('mobile') : navigation.goBack()}>← Back</Text>
 
-        <Text style={styles.roleChip}>🏭 Vendor Login</Text>
+        <Text style={[styles.roleChip, {backgroundColor: roleBgColor, color: roleColor}]}>
+          {role === 'vendor' ? '🏭 Vendor Login' : '🏪 Retailer Login'}
+        </Text>
+
+        {step === 'mobile' && (
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tabButton, role === 'vendor' && {borderBottomColor: Colors.primary}]}
+              onPress={() => setRole('vendor')}>
+              <Text style={[styles.tabText, role === 'vendor' && {color: Colors.primary, fontWeight: '700'}]}>Vendor</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, role === 'retailer' && {borderBottomColor: Colors.secondary}]}
+              onPress={() => setRole('retailer')}>
+              <Text style={[styles.tabText, role === 'retailer' && {color: Colors.secondary, fontWeight: '700'}]}>Retailer</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <Text style={styles.title}>{step === 'mobile' ? 'Enter your mobile' : 'Verify OTP'}</Text>
         <Text style={styles.subtitle}>
           {step === 'mobile'
@@ -102,7 +141,7 @@ const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
                 style={{flex: 1, marginBottom: 0}}
               />
             </View>
-            <Button label="Send OTP" onPress={handleSendOTP} loading={loading} />
+            <Button label="Send OTP" onPress={handleSendOTP} loading={loading} style={{backgroundColor: roleColor}} />
           </>
         ) : (
           <>
@@ -115,9 +154,9 @@ const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
               maxLength={6}
             />
 
-            <Button label="Verify & Login" onPress={handleVerifyOTP} loading={loading} />
+            <Button label="Verify & Login" onPress={handleVerifyOTP} loading={loading} style={{backgroundColor: roleColor}} />
 
-            <Text style={styles.resend} onPress={timer === 0 ? handleSendOTP : undefined}>
+            <Text style={[styles.resend, {color: roleColor}]} onPress={timer === 0 ? handleSendOTP : undefined}>
               {timer > 0 ? `Resend OTP in ${timer}s` : 'Resend OTP'}
             </Text>
           </>
@@ -130,10 +169,9 @@ const VendorLoginScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.bgPrimary},
   content: {padding: Spacing.lg, paddingTop: Spacing.xl},
-  back: {color: Colors.primary, fontWeight: '600', marginBottom: Spacing.lg, fontSize: Typography.base},
+  back: {fontWeight: '600', marginBottom: Spacing.lg, fontSize: Typography.base},
   roleChip: {
-    alignSelf: 'flex-start', backgroundColor: Colors.primaryLight,
-    color: Colors.primary, paddingHorizontal: Spacing.md, paddingVertical: 4,
+    alignSelf: 'flex-start', paddingHorizontal: Spacing.md, paddingVertical: 4,
     borderRadius: Radius.full, fontWeight: '700', fontSize: Typography.xs, marginBottom: Spacing.md,
   },
   title: {fontSize: Typography.xxl, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4, letterSpacing: -0.5},
@@ -145,8 +183,25 @@ const styles = StyleSheet.create({
   },
   prefixText: {fontSize: Typography.base, fontWeight: '600', color: Colors.textPrimary},
   resend: {
-    textAlign: 'center', color: Colors.primary, fontWeight: '600',
+    textAlign: 'center', fontWeight: '600',
     marginTop: Spacing.md, fontSize: Typography.sm,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: Spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    fontSize: Typography.base,
+    color: Colors.textSecondary,
   },
 });
 

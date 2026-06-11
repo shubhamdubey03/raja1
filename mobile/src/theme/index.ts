@@ -1,26 +1,26 @@
 /** Design tokens — AMB-DMP-2026 */
 export const Colors = {
-  primary: '#6366f1',
-  primaryDark: '#4f46e5',
-  primaryLight: 'rgba(99,102,241,0.12)',
-  secondary: '#10b981',
-  secondaryLight: 'rgba(16,185,129,0.12)',
-  warning: '#f59e0b',
-  warningLight: 'rgba(245,158,11,0.12)',
-  danger: '#ef4444',
-  dangerLight: 'rgba(239,68,68,0.12)',
-  info: '#06b6d4',
-  infoLight: 'rgba(6,182,212,0.12)',
+  primary: '#4f46e5',        // Modern Indigo
+  primaryDark: '#3730a3',    // Deep Indigo
+  primaryLight: '#f5f3ff',   // Very Soft Lavender
+  secondary: '#059669',      // Premium Emerald Green
+  secondaryLight: '#ecfdf5', // Soft Mint
+  warning: '#d97706',        // Amber
+  warningLight: '#fef3c7',   // Soft Amber
+  danger: '#dc2626',         // Coral Red
+  dangerLight: '#fee2e2',    // Soft Coral
+  info: '#0d9488',           // Teal
+  infoLight: '#f0fdfa',      // Soft Teal
 
-  bgPrimary: '#f8fafc',
-  bgSecondary: '#ffffff',
-  bgTertiary: '#f1f5f9',
+  bgPrimary: '#f8fafc',      // Cool Slate Gray Light
+  bgSecondary: '#ffffff',    // White
+  bgTertiary: '#f1f5f9',     // Light gray border/bg
 
-  textPrimary: '#0f172a',
-  textSecondary: '#475569',
-  textMuted: '#94a3b8',
+  textPrimary: '#0f172a',    // Dark Slate
+  textSecondary: '#334155',  // Medium Slate
+  textMuted: '#64748b',      // Cool Gray Muted
 
-  border: '#e2e8f0',
+  border: '#e2e8f0',         // Soft borders
   borderHover: '#cbd5e1',
 
   white: '#ffffff',
@@ -29,19 +29,19 @@ export const Colors = {
 
 export const Typography = {
   fontFamily: 'System',
-  xs: 11,
-  sm: 13,
-  base: 15,
-  md: 17,
-  lg: 19,
-  xl: 22,
-  xxl: 28,
-  xxxl: 34,
+  xs: 12,
+  sm: 14,
+  base: 16,
+  md: 18,
+  lg: 20,
+  xl: 24,
+  xxl: 30,
+  xxxl: 36,
 };
 
 export const Spacing = {
-  xs: 4,
-  sm: 8,
+  xs: 6,
+  sm: 10,
   md: 16,
   lg: 24,
   xl: 32,
@@ -49,25 +49,25 @@ export const Spacing = {
 };
 
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 20,
-  full: 999,
+  sm: 10,
+  md: 16,
+  lg: 24,
+  full: 9999,
 };
 
 export const Shadow = {
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 6,
   },
 };

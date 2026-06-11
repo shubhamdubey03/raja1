@@ -19,8 +19,10 @@ class CartItemUpdate(BaseModel):
 class CartItemResponse(BaseModel):
     id: UUID
     product_id: UUID
+    product_name: str
     quantity: int
     price_snapshot: int
+    is_deleted: bool
     model_config = {"from_attributes": True}
 
 

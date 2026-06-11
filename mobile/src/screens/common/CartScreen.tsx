@@ -3,11 +3,12 @@
  * Cart items, qty stepper, MOV validation banner, price summary, checkout CTA.
  * P5-19 — Credit Limit Warning banner included.
  */
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, Alert, RefreshControl,
 } from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 import api from '../../services/api';
 import {setCart, setMovValidation} from '../../store/slices/cartSlice';
 import {useAppDispatch, useAppSelector} from '../../hooks/useRedux';
@@ -35,7 +36,11 @@ const CartScreen: React.FC<{navigation: any}> = ({navigation}) => {
     finally { setLoading(false); setRefreshing(false); }
   }, [dispatch]);
 
-  useEffect(() => { loadCart(); }, [loadCart]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCart();
+    }, [loadCart])
+  );
 
   const updateQty = async (itemId: string, qty: number) => {
     try {

@@ -1,13 +1,9 @@
-/**
- * Root App — AMB-DMP-2026 Mobile
- * Provider tree: Redux (with persist) → NavigationContainer → AppNavigator
- * P5-23 — Offline banner via NetInfo
- */
 import React, {useEffect, useState} from 'react';
 import {StatusBar, View} from 'react-native';
 import {Provider} from 'react-redux';
 import {PersistGate} from 'redux-persist/integration/react';
 import NetInfo from '@react-native-community/netinfo';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {store, persistor} from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
 import {OfflineBanner} from './src/components';
@@ -35,7 +31,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => (
   <Provider store={store}>
     <PersistGate loading={null} persistor={persistor}>
-      <AppContent />
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
     </PersistGate>
   </Provider>
 );

@@ -44,6 +44,7 @@ const TabIcon: React.FC<TabIconProps> = ({icon, focused}) => (
 const VendorTab = () => (
   <Tab.Navigator
     screenOptions={{
+      lazy: true,
       headerShown: true,
       tabBarStyle: styles.tabBar,
       tabBarActiveTintColor: Colors.primary,
@@ -85,6 +86,7 @@ const VendorTab = () => (
 const RetailerTab = () => (
   <Tab.Navigator
     screenOptions={{
+      lazy: true,
       headerShown: true,
       tabBarStyle: styles.tabBar,
       tabBarActiveTintColor: Colors.secondary,
@@ -173,15 +175,22 @@ const AppNavigator = () => (
 
 const styles = StyleSheet.create({
   tabBar: {
+    backgroundColor: Colors.bgSecondary,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 4,
+    height: 68,
+    paddingBottom: 12,
+    paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: -3},
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 8,
   },
   tabLabel: {
-    fontSize: Typography.xs,
-    fontWeight: '600',
+    fontSize: Typography.xs - 1,
+    fontWeight: '700',
+    marginTop: 2,
   },
 });
 

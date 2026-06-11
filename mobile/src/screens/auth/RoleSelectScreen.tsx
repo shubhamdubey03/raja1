@@ -42,7 +42,9 @@ const RoleSelectScreen: React.FC<Props> = ({navigation}) => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footer}>Already registered? Sign in via your mobile number.</Text>
+      <TouchableOpacity onPress={() => navigation.navigate('VendorLogin', {role: 'retailer'})} style={styles.footerButton}>
+        <Text style={styles.footer}>Already registered? <Text style={{color: Colors.primary, fontWeight: '700'}}>Sign in here</Text></Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -70,6 +72,7 @@ const styles = StyleSheet.create({
   roleLabel: {fontSize: Typography.lg, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4},
   roleDesc: {fontSize: Typography.xs, color: Colors.textMuted, textAlign: 'center'},
   footer: {fontSize: Typography.xs, color: Colors.textMuted, textAlign: 'center'},
+  footerButton: {marginTop: Spacing.md, alignSelf: 'center'},
 });
 
 export default RoleSelectScreen;

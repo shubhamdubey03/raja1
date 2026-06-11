@@ -7,9 +7,9 @@ import axios, {AxiosError, InternalAxiosRequestConfig} from 'axios';
 import {store} from '../store';
 import {logout, setTokens} from '../store/slices/authSlice';
 
-// Use 10.0.2.2 for Android emulator (maps to host localhost)
+// Use localhost (with adb reverse) for both emulator and physical device
 const BASE_URL = __DEV__
-  ? 'http://10.0.2.2:8000/api/v1'
+  ? 'http://localhost:8000/api/v1'
   : 'https://api.ambdmp.com/api/v1';
 
 export const api = axios.create({

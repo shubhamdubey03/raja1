@@ -17,11 +17,12 @@ interface BtnProps {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   fullWidth?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  style?: any;
 }
 
 export const Button: React.FC<BtnProps> = ({
   label, onPress, loading = false, disabled = false,
-  variant = 'primary', fullWidth = true, size = 'md',
+  variant = 'primary', fullWidth = true, size = 'md', style,
 }) => {
   const bg = {
     primary: Colors.primary,
@@ -50,6 +51,7 @@ export const Button: React.FC<BtnProps> = ({
         {backgroundColor: bg, paddingVertical: paddingV},
         fullWidth && {width: '100%'},
         (disabled || loading) && {opacity: 0.6},
+        style,
       ]}>
       {loading ? (
         <ActivityIndicator color={color} size="small" />

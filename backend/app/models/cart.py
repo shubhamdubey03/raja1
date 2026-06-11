@@ -53,3 +53,7 @@ class CartItem(BaseModel):
 
     cart = relationship("Cart", back_populates="items")
     product = relationship("Product", lazy="selectin")
+
+    @property
+    def product_name(self) -> str:
+        return self.product.name if self.product else "Unknown Product"
