@@ -55,3 +55,6 @@ redis==6.2.0
 
 # --- AWS S3 ---
 boto3==1.38.29
+
+# --- Payment Gateway ---
+razorpay==2.0.1

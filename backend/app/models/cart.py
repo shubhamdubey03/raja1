@@ -57,3 +57,21 @@ class CartItem(BaseModel):
     @property
     def product_name(self) -> str:
         return self.product.name if self.product else "Unknown Product"
+
+    @property
+    def product_sku(self) -> str:
+        return self.product.sku if self.product else ""
+
+    @property
+    def product_image_url(self) -> str | None:
+        """Return first product image URL for display in cart."""
+        if not self.product:
+            return None
+        images = getattr(self.product, 'images', [])
+        if images:
+            return images[0].image_url
+        return None
+
+    @property
+    def gst_rate(self) -> int:
+        return self.product.gst_rate if self.product else 18

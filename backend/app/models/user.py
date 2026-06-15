@@ -60,6 +60,7 @@ class User(BaseModel):
 
     # ── Profile ──────────────────────────────────────────────
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role_enum", create_constraint=True),
         nullable=False,

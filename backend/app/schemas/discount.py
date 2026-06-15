@@ -15,6 +15,7 @@ class DiscountCodeCreate(BaseModel):
     valid_until: datetime
     scope_type: Optional[str] = None
     scope_id: Optional[UUID] = None
+    applicable_to: str = "all"
     description: Optional[str] = None
 
 
@@ -28,6 +29,7 @@ class DiscountCodeUpdate(BaseModel):
     valid_until: Optional[datetime] = None
     scope_type: Optional[str] = None
     scope_id: Optional[UUID] = None
+    applicable_to: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -44,6 +46,7 @@ class DiscountCodeResponse(BaseModel):
     valid_until: datetime
     scope_type: Optional[str]
     scope_id: Optional[UUID]
+    applicable_to: str
     description: Optional[str]
     is_active: bool
 

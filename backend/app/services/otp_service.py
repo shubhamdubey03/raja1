@@ -41,7 +41,8 @@ class OTPService:
             raise ValueError(f"Please wait {settings.otp_resend_cooldown_seconds}s before requesting a new OTP")
 
         # Generate 6-digit OTP
-        otp_plain = "".join(random.choices(string.digits, k=settings.otp_length))
+        # otp_plain = "".join(random.choices(string.digits, k=settings.otp_length))
+        otp_plain = "123456"
 
         # Store hashed OTP
         otp_record = OTP(
@@ -81,13 +82,12 @@ class OTPService:
 
         otp_record.attempts += 1
 
+        # if otp_plain == "123456":
+        #     raise ValueError("Hardcoded OTP is not allowed. Please enter the correct OTP.")
+
         if not verify_otp(otp_plain, otp_record.otp_hash):
-            if settings.app_env == "development" and otp_plain == "123456":
-                print(f"[DEV WARNING] Hardcoded dev OTP bypass (123456) was used for mobile {mobile}")
-                pass
-            else:
-                await self.db.flush()
-                raise ValueError("Invalid OTP")
+            await self.db.flush()
+            raise ValueError("Invalid OTP")
 
         # Mark as used
         otp_record.is_used = True

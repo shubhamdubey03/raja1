@@ -54,3 +54,39 @@ async def test_retailer_register_validation(client):
         json={"mobile": "123"},  # Missing required fields
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_error_response_format(client):
+    """Test that errors return the consistent format required by Rule 3."""
+    response = await client.post(
+        "/api/v1/admin/auth/login",
+        json={"email": "wrong@test.com", "password": "wrong"},
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert data["success"] is False
+    assert "message" in data
+    assert data["error_code"] == "UNAUTHORIZED"
+    assert data["data"] is None
+
+
+@pytest.mark.asyncio
+async def test_hardcoded_otp_rejected(client):
+    """Test that the hardcoded OTP bypass (123456) is rejected."""
+    # 1. Send OTP to establish a valid OTP record in the DB
+    await client.post(
+        "/api/v1/otp/send",
+        json={"mobile": "+919876543210", "purpose": "login"},
+    )
+    # 2. Attempt verification using the forbidden hardcoded OTP "123456"
+    response = await client.post(
+        "/api/v1/otp/verify",
+        json={"mobile": "+919876543210", "otp": "123456", "purpose": "login"},
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert data["success"] is False
+    assert "Hardcoded OTP" in data["message"]
+
+

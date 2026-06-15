@@ -63,3 +63,13 @@ class TestJWT:
 
     def test_invalid_token_returns_none(self):
         assert decode_token("invalid-token") is None
+
+
+class TestAppException:
+    def test_app_exception_properties(self):
+        from app.exceptions import AppException
+        ex = AppException(status_code=400, detail="Invalid data submitted", error_code="INVALID_INPUT")
+        assert ex.status_code == 400
+        assert ex.detail == "Invalid data submitted"
+        assert ex.error_code == "INVALID_INPUT"
+

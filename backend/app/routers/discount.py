@@ -52,6 +52,7 @@ async def create_discount(
         valid_until=req.valid_until,
         scope_type=req.scope_type,
         scope_id=req.scope_id,
+        applicable_to=req.applicable_to,
         description=req.description,
     )
     db.add(code_obj)

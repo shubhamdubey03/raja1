@@ -93,8 +93,16 @@ class Product(BaseModel):
     # ── Relationships ────────────────────────────────────────
     category = relationship("Category", back_populates="products")
     images = relationship("ProductImage", back_populates="product", lazy="selectin", order_by="ProductImage.sort_order")
-    vendor_pricing = relationship("VendorPricing", back_populates="product", lazy="noload")
-    retailer_pricing = relationship("RetailerPricing", back_populates="product", lazy="noload")
+    vendor_pricing = relationship("VendorPricing", back_populates="product", lazy="selectin", uselist=False)
+    retailer_pricing = relationship("RetailerPricing", back_populates="product", lazy="selectin", uselist=False)
+
+    @property
+    def vendor_price(self) -> int | None:
+        return self.vendor_pricing.price if self.vendor_pricing else None
+
+    @property
+    def retailer_price(self) -> int | None:
+        return self.retailer_pricing.price if self.retailer_pricing else None
 
 
 class ProductImage(BaseModel):

@@ -62,3 +62,14 @@ class OrderItem(BaseModel):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", lazy="selectin")
+
+    @property
+    def product_image_url(self) -> str | None:
+        """First product image for display in order cards."""
+        try:
+            if not self.product:
+                return None
+            images = self.product.__dict__.get('images', [])
+            return images[0].image_url if images else None
+        except Exception:
+            return None

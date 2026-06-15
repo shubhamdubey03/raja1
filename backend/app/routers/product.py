@@ -5,7 +5,7 @@ Product and Category router — Phase 3A endpoints.
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status,Form,UploadFile
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,34 @@ from app.services.audit_service import AuditService
 from app.utils.slug import generate_slug, generate_unique_slug
 
 router = APIRouter(tags=["Products & Categories"])
+
+
+# ── Image Upload ─────────────────────────────────────────────
+
+@router.post("/upload", dependencies=[Depends(get_current_user)])
+async def upload_file(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Admin uploads an image and gets static serving URL."""
+    import uuid
+    import os
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        raise HTTPException(status_code=400, detail="Only images are allowed")
+    
+    filename = f"{uuid.uuid4()}{ext}"
+    os.makedirs("uploads", exist_ok=True)
+    filepath = os.path.join("uploads", filename)
+    
+    with open(filepath, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    backend_url = backend_url.rstrip("/")
+    return {"image_url": f"{backend_url}/uploads/{filename}"}
 
 
 # ── P3-01: Category CRUD ────────────────────────────────────
@@ -152,9 +180,16 @@ async def create_product(
             db.add(img)
         await db.flush()
 
+    # Add pricing overrides
+    if req.vendor_price is not None:
+        db.add(VendorPricing(product_id=product.id, price=req.vendor_price))
+    if req.retailer_price is not None:
+        db.add(RetailerPricing(product_id=product.id, price=req.retailer_price))
+    await db.flush()
+
     audit = AuditService(db)
     await audit.log_action(current_user, "create_product", "product", product.id)
-    # Refresh to load images
+    # Refresh to load images and pricing relationships
     await db.refresh(product)
     return product
 
@@ -168,7 +203,7 @@ async def list_products(
     in_stock: Optional[bool] = None,
     sort: Optional[str] = Query(None, pattern="^(price_asc|price_desc|newest|popular)$"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -207,7 +242,36 @@ async def list_products(
     query = query.offset(offset).limit(page_size)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    products = result.scalars().all()
+
+    response_products = []
+    for p in products:
+        resolved_price = p.base_price
+        if current_user.role == UserRole.VENDOR and p.vendor_pricing:
+            resolved_price = p.vendor_pricing.price
+        elif current_user.role == UserRole.RETAILER and p.retailer_pricing:
+            resolved_price = p.retailer_pricing.price
+
+        prod_dict = {
+            "id": p.id,
+            "name": p.name,
+            "slug": p.slug,
+            "sku": p.sku,
+            "description": p.description,
+            "unit": p.unit,
+            "hsn_code": p.hsn_code,
+            "base_price": resolved_price,
+            "gst_rate": p.gst_rate,
+            "stock_qty": p.stock_qty,
+            "low_stock_threshold": p.low_stock_threshold,
+            "status": p.status.value,
+            "category_id": p.category_id,
+            "images": [{"id": img.id, "image_url": img.image_url, "sort_order": img.sort_order} for img in p.images],
+            "vendor_price": p.vendor_price,
+            "retailer_price": p.retailer_price
+        }
+        response_products.append(prod_dict)
+    return response_products
 
 
 @router.get("/products/{product_id}", response_model=ProductResponse)
@@ -223,7 +287,31 @@ async def get_product(
     product = result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return product
+
+    resolved_price = product.base_price
+    if current_user.role == UserRole.VENDOR and product.vendor_pricing:
+        resolved_price = product.vendor_pricing.price
+    elif current_user.role == UserRole.RETAILER and product.retailer_pricing:
+        resolved_price = product.retailer_pricing.price
+
+    return {
+        "id": product.id,
+        "name": product.name,
+        "slug": product.slug,
+        "sku": product.sku,
+        "description": product.description,
+        "unit": product.unit,
+        "hsn_code": product.hsn_code,
+        "base_price": resolved_price,
+        "gst_rate": product.gst_rate,
+        "stock_qty": product.stock_qty,
+        "low_stock_threshold": product.low_stock_threshold,
+        "status": product.status.value,
+        "category_id": product.category_id,
+        "images": [{"id": img.id, "image_url": img.image_url, "sort_order": img.sort_order} for img in product.images],
+        "vendor_price": product.vendor_price,
+        "retailer_price": product.retailer_price
+    }
 
 
 @router.patch("/products/{product_id}", response_model=ProductResponse)
@@ -246,12 +334,55 @@ async def update_product(
         raise HTTPException(status_code=400, detail="GST rate must be 0, 5, 12, 18, or 28")
     if "name" in update_data:
         update_data["slug"] = generate_unique_slug(update_data["name"])
+
+    # Handle image urls update
+    if "image_urls" in update_data:
+        image_urls = update_data.pop("image_urls")
+        from sqlalchemy import delete
+        await db.execute(delete(ProductImage).where(ProductImage.product_id == product_id))
+        if image_urls:
+            for i, url in enumerate(image_urls):
+                img = ProductImage(product_id=product_id, image_url=url, sort_order=i)
+                db.add(img)
+        await db.flush()
+
+    # Handle vendor pricing override
+    if "vendor_price" in update_data:
+        vp_val = update_data.pop("vendor_price")
+        vp_res = await db.execute(select(VendorPricing).where(VendorPricing.product_id == product_id, VendorPricing.is_deleted == False))
+        vp = vp_res.scalar_one_or_none()
+        if vp_val is not None:
+            if vp:
+                vp.price = vp_val
+            else:
+                db.add(VendorPricing(product_id=product_id, price=vp_val))
+        else:
+            if vp:
+                await db.delete(vp)
+        await db.flush()
+
+    # Handle retailer pricing override
+    if "retailer_price" in update_data:
+        rp_val = update_data.pop("retailer_price")
+        rp_res = await db.execute(select(RetailerPricing).where(RetailerPricing.product_id == product_id, RetailerPricing.is_deleted == False))
+        rp = rp_res.scalar_one_or_none()
+        if rp_val is not None:
+            if rp:
+                rp.price = rp_val
+            else:
+                db.add(RetailerPricing(product_id=product_id, price=rp_val))
+        else:
+            if rp:
+                await db.delete(rp)
+        await db.flush()
+
     for k, v in update_data.items():
         setattr(product, k, v)
     await db.flush()
 
     audit = AuditService(db)
     await audit.log_action(current_user, "update_product", "product", product_id, update_data)
+    await db.refresh(product)
     return product
 
 

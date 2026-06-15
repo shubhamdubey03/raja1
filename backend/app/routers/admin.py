@@ -65,10 +65,22 @@ async def get_audit_log(
 
 @router.get("/reports/sales", dependencies=[Depends(require_admin)])
 async def sales_report(
-    range: str = Query("monthly", pattern="^(daily|weekly|monthly|custom)$"),
+    range_type: str = Query("monthly", alias="range", pattern="^(daily|weekly|monthly|custom)$"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Sales report with aggregated data."""
+    """Sales report with aggregated data and trend data."""
+    from datetime import datetime, timedelta, timezone
+    
+    now = datetime.now(timezone.utc)
+    if range_type == "daily":
+        start_date = now - timedelta(days=1)
+    elif range_type == "weekly":
+        start_date = now - timedelta(days=7)
+    elif range_type == "monthly":
+        start_date = now - timedelta(days=30)
+    else:
+        start_date = now - timedelta(days=30)
+
     total_orders = await db.execute(
         select(func.count(Order.id)).where(Order.is_deleted == False)  # noqa: E712
     )
@@ -84,11 +96,66 @@ async def sales_report(
             Order.status == OrderStatus.PENDING,
         )
     )
+
+    # Fetch orders in range to build trend chart
+    trend_query = select(Order.created_at, Order.grand_total, Order.status).where(
+        Order.is_deleted == False,
+        Order.created_at >= start_date
+    ).order_by(Order.created_at.asc())
+    
+    trend_result = await db.execute(trend_query)
+    orders = trend_result.all()
+
+    trend_data = []
+    if range_type == "daily":
+        # last 24 hours
+        for i in range(23, -1, -1):
+            dt = now - timedelta(hours=i)
+            label = dt.strftime('%H:00')
+            trend_data.append({
+                "label": label,
+                "revenue": 0.0,
+                "orders": 0,
+                "key": dt.strftime('%Y-%m-%d %H')
+            })
+        for created_at, grand_total, status in orders:
+            key = created_at.strftime('%Y-%m-%d %H')
+            for item in trend_data:
+                if item["key"] == key:
+                    if status != OrderStatus.CANCELLED:
+                        item["revenue"] += grand_total
+                    item["orders"] += 1
+    else:
+        # weekly or monthly
+        days_count = 7 if range_type == "weekly" else 30
+        for i in range(days_count - 1, -1, -1):
+            dt = now - timedelta(days=i)
+            label = dt.strftime('%b %d')
+            trend_data.append({
+                "label": label,
+                "revenue": 0.0,
+                "orders": 0,
+                "key": dt.strftime('%Y-%m-%d')
+            })
+        for created_at, grand_total, status in orders:
+            key = created_at.strftime('%Y-%m-%d')
+            for item in trend_data:
+                if item["key"] == key:
+                    if status != OrderStatus.CANCELLED:
+                        item["revenue"] += grand_total
+                    item["orders"] += 1
+
+    # Convert revenue to rupees in trend_data
+    for item in trend_data:
+        item["revenue"] = round(item["revenue"] / 100.0, 2)
+        del item["key"]
+
     return {
         "total_orders": total_orders.scalar(),
         "total_revenue": total_revenue.scalar(),
         "pending_orders": pending_orders.scalar(),
-        "range": range,
+        "range": range_type,
+        "trend_data": trend_data,
     }
 
 
@@ -177,7 +244,7 @@ async def sales_report_pdf(
     normal_style = styles['Normal']
     bold_style = ParagraphStyle('BoldText', parent=normal_style, fontName='Helvetica-Bold')
 
-    story.append(Paragraph("AMB Platform - Sales Performance Report", title_style))
+    story.append(Paragraph("Supply Setu - Sales Performance Report", title_style))
     story.append(Paragraph(f"Generated on: {now.strftime('%Y-%m-%d %H:%M:%S UTC')} | Range: {range.capitalize()}", subtitle_style))
     story.append(Spacer(1, 10))
 

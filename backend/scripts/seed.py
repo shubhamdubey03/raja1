@@ -17,6 +17,8 @@ from app.models.vendor import Vendor
 from app.models.retailer import Retailer
 from app.models.category import Category
 from app.models.product import Product, ProductStatus
+from app.models.ledger import LedgerEntry, LedgerType
+from app.models.order import Order, OrderItem, OrderStatus
 from app.utils.security import hash_password
 from app.utils.slug import generate_unique_slug
 
@@ -133,7 +135,8 @@ async def seed():
         existing_retailer = await db.execute(
             select(User).where(User.mobile == "+919876543211", User.is_deleted == False)  # noqa: E712
         )
-        if not existing_retailer.scalar_one_or_none():
+        retailer_user_obj = existing_retailer.scalar_one_or_none()
+        if not retailer_user_obj:
             retailer_user = User(
                 mobile="+919876543211",
                 full_name="Test Retailer",
@@ -155,6 +158,102 @@ async def seed():
             )
             db.add(retailer)
             print("[SEED] Retailer created: Test Retailer (+919876543211)")
+
+            # Seed ledger entries
+            ledger_debit = LedgerEntry(
+                user_id=retailer_user.id,
+                entry_type=LedgerType.DEBIT,
+                amount=250000,
+                reference_type="order",
+                reference_id=uuid.uuid4(),
+                description="Order #ORD-10023",
+            )
+            ledger_credit = LedgerEntry(
+                user_id=retailer_user.id,
+                entry_type=LedgerType.CREDIT,
+                amount=100000,
+                reference_type="payment",
+                reference_id=uuid.uuid4(),
+                description="Manual Cash payment",
+            )
+            db.add(ledger_debit)
+            db.add(ledger_credit)
+        else:
+            # Check if ledger entries already exist
+            existing_ledger = await db.execute(select(LedgerEntry).where(LedgerEntry.user_id == retailer_user_obj.id))
+            if not existing_ledger.scalars().first():
+                ledger_debit = LedgerEntry(
+                    user_id=retailer_user_obj.id,
+                    entry_type=LedgerType.DEBIT,
+                    amount=250000,
+                    reference_type="order",
+                    reference_id=uuid.uuid4(),
+                    description="Order #ORD-10023",
+                )
+                ledger_credit = LedgerEntry(
+                    user_id=retailer_user_obj.id,
+                    entry_type=LedgerType.CREDIT,
+                    amount=100000,
+                    reference_type="payment",
+                    reference_id=uuid.uuid4(),
+                    description="Manual Cash payment",
+                )
+                db.add(ledger_debit)
+                db.add(ledger_credit)
+                print("[SEED] Ledger entries created for Retailer")
+
+        # ── 6. Seed Sample Orders ────────────────────────────
+        r_user_res = await db.execute(
+            select(User).where(User.mobile == "+919876543211")
+        )
+        r_user = r_user_res.scalar_one_or_none()
+        if r_user:
+            existing_ord = await db.execute(
+                select(Order).where(Order.user_id == r_user.id)
+            )
+            if not existing_ord.scalars().first():
+                # Get some product IDs
+                p_res = await db.execute(select(Product).limit(2))
+                prods = p_res.scalars().all()
+                if prods:
+                    # Let's create an order
+                    order = Order(
+                        user_id=r_user.id,
+                        order_number="ORD-20260612-SEED1111",
+                        status=OrderStatus.CONFIRMED,
+                        subtotal=sum(p.base_price for p in prods),
+                        gst_amount=sum(int(p.base_price * p.gst_rate / 100) for p in prods),
+                        discount_amount=0,
+                        grand_total=sum(p.base_price + int(p.base_price * p.gst_rate / 100) for p in prods),
+                        delivery_address="Test Retail Shop, Delhi, Delhi - 110001",
+                    )
+                    db.add(order)
+                    await db.flush()
+
+                    for p in prods:
+                        oi = OrderItem(
+                            order_id=order.id,
+                            product_id=p.id,
+                            product_name=p.name,
+                            quantity=1,
+                            unit_price=p.base_price,
+                            gst_rate=p.gst_rate,
+                            line_total=p.base_price,
+                            gst_amount=int(p.base_price * p.gst_rate / 100),
+                        )
+                        db.add(oi)
+
+                    # Create a ledger debit entry matching this order
+                    ledger_debit = LedgerEntry(
+                        user_id=r_user.id,
+                        entry_type=LedgerType.DEBIT,
+                        amount=order.grand_total,
+                        reference_type="order",
+                        reference_id=order.id,
+                        description=f"Order {order.order_number}",
+                    )
+                    db.add(ledger_debit)
+                    print(f"[SEED] Sample order created for Retailer: {order.order_number}")
 
         await db.commit()
         print("\n[SEED] [SUCCESS] Seed data insertion complete!")

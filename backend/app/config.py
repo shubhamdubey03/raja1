@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     # ── Application ──────────────────────────────────────────
-    app_name: str = "AMB-DMP-2026"
+    app_name: str = "Supply Setu"
     app_env: str = "development"
     debug: bool = True
     api_v1_prefix: str = "/api/v1"
@@ -62,7 +62,19 @@ class Settings(BaseSettings):
     payment_gateway: str = "razorpay"
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
+    razorpay_key: str = ""
+    razorpay_secret: str = ""
     razorpay_webhook_secret: str = ""
+
+    @property
+    def rzp_key(self) -> str:
+        val = self.razorpay_key or self.razorpay_key_id
+        return val.strip('"').strip("'")
+
+    @property
+    def rzp_secret(self) -> str:
+        val = self.razorpay_secret or self.razorpay_key_secret
+        return val.strip('"').strip("'")
 
     # ── Firebase ─────────────────────────────────────────────
     fcm_server_key: str = ""

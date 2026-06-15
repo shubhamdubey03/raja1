@@ -79,6 +79,7 @@ class UserStatusUpdate(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -86,9 +87,12 @@ class UserResponse(BaseModel):
     mobile: str
     email: Optional[str]
     full_name: str
+    avatar_url: Optional[str]
     role: str
     status: str
     is_verified: bool
+    retailer_profile: Optional["RetailerProfileResponse"] = None
+    vendor_profile: Optional["VendorProfileResponse"] = None
 
     model_config = {"from_attributes": True}
 
@@ -111,6 +115,7 @@ class VendorUserResponse(BaseModel):
     mobile: str
     email: Optional[str]
     full_name: str
+    avatar_url: Optional[str]
     role: str
     status: str
     is_verified: bool
@@ -139,6 +144,7 @@ class RetailerUserResponse(BaseModel):
     mobile: str
     email: Optional[str]
     full_name: str
+    avatar_url: Optional[str]
     role: str
     status: str
     is_verified: bool

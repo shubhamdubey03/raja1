@@ -151,6 +151,15 @@ async def create_vendor(
 @router.post("/vendor/auth/login")
 async def vendor_login(req: OTPSendRequest, db: AsyncSession = Depends(get_db)):
     """Vendor requests OTP for login."""
+    result = await db.execute(
+        select(User).where(User.mobile == req.mobile, User.is_deleted == False)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mobile number not registered. Please request access.")
+    if user.role != UserRole.VENDOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This number is registered as a Retailer, not a Vendor.")
+
     otp_svc = OTPService(db)
     try:
         return await otp_svc.send_otp(req.mobile, "login")
@@ -206,6 +215,16 @@ async def retailer_otp_verify(req: OTPVerifyRequest, db: AsyncSession = Depends(
 @router.post("/otp/send")
 async def send_otp(req: OTPSendRequest, db: AsyncSession = Depends(get_db)):
     """Send OTP to mobile number."""
+    if req.purpose == "login":
+        result = await db.execute(
+            select(User).where(User.mobile == req.mobile, User.is_deleted == False)
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mobile number not registered. Please register first.")
+        if user.role != UserRole.RETAILER:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This number is registered as a Vendor, not a Retailer.")
+
     otp_svc = OTPService(db)
     try:
         return await otp_svc.send_otp(req.mobile, req.purpose)
@@ -239,10 +258,13 @@ async def update_profile(
     current_user: User = Depends(get_current_user),
 ):
     """Update current user profile."""
-    if req.full_name:
-        current_user.full_name = req.full_name
-    if req.email:
-        current_user.email = req.email
+    update_data = req.model_dump(exclude_unset=True)
+    if "full_name" in update_data:
+        current_user.full_name = update_data["full_name"]
+    if "email" in update_data:
+        current_user.email = update_data["email"]
+    if "avatar_url" in update_data:
+        current_user.avatar_url = update_data["avatar_url"]
     await db.flush()
     return current_user
 

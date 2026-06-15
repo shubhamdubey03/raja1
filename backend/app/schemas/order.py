@@ -1,5 +1,6 @@
 """Order, Cart, and Payment Pydantic schemas."""
 
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
@@ -20,8 +21,11 @@ class CartItemResponse(BaseModel):
     id: UUID
     product_id: UUID
     product_name: str
+    product_sku: Optional[str] = None
+    product_image_url: Optional[str] = None
     quantity: int
     price_snapshot: int
+    gst_rate: int
     is_deleted: bool
     model_config = {"from_attributes": True}
 
@@ -40,6 +44,10 @@ class CartValidation(BaseModel):
 
 # ── Order ────────────────────────────────────────────────────
 
+class ApplyCouponRequest(BaseModel):
+    code: str
+
+
 class OrderCreateRequest(BaseModel):
     delivery_address: Optional[str] = None
     discount_code: Optional[str] = None
@@ -53,6 +61,7 @@ class OrderItemResponse(BaseModel):
     id: UUID
     product_id: UUID
     product_name: str
+    product_image_url: Optional[str] = None
     quantity: int
     unit_price: int
     gst_rate: int
@@ -70,6 +79,7 @@ class OrderResponse(BaseModel):
     discount_amount: int
     grand_total: int
     delivery_address: Optional[str]
+    created_at: datetime
     items: List[OrderItemResponse] = []
     model_config = {"from_attributes": True}
 

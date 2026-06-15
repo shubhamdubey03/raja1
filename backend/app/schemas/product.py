@@ -49,6 +49,8 @@ class ProductCreate(BaseModel):
     unit: str = "piece"
     hsn_code: Optional[str] = None
     base_price: int = Field(..., gt=0, description="Price in paise")
+    vendor_price: Optional[int] = None
+    retailer_price: Optional[int] = None
     gst_rate: int = Field(default=18, description="GST rate: 0, 5, 12, 18, or 28")
     stock_qty: int = Field(default=0, ge=0)
     low_stock_threshold: int = Field(default=10, ge=0)
@@ -63,11 +65,14 @@ class ProductUpdate(BaseModel):
     unit: Optional[str] = None
     hsn_code: Optional[str] = None
     base_price: Optional[int] = None
+    vendor_price: Optional[int] = None
+    retailer_price: Optional[int] = None
     gst_rate: Optional[int] = None
     stock_qty: Optional[int] = None
     low_stock_threshold: Optional[int] = None
     category_id: Optional[UUID] = None
     status: Optional[str] = None
+    image_urls: Optional[List[str]] = None
 
 
 class ProductImageResponse(BaseModel):
@@ -92,6 +97,8 @@ class ProductResponse(BaseModel):
     status: str
     category_id: UUID
     images: List[ProductImageResponse] = []
+    vendor_price: Optional[int] = None
+    retailer_price: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
