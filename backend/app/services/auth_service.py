@@ -162,7 +162,7 @@ class AuthService:
     # ── Admin Creates Vendor ─────────────────────────────────
 
     async def create_vendor(self, data: dict) -> User:
-        """Admin creates a vendor account — vendor verifies via OTP later."""
+        """Admin creates a vendor account with a password."""
         # Check duplicate mobile
         existing = await self.db.execute(
             select(User).where(User.mobile == data["mobile"], User.is_deleted == False)  # noqa: E712
@@ -174,8 +174,9 @@ class AuthService:
             mobile=data["mobile"],
             full_name=data["full_name"],
             role=UserRole.VENDOR,
-            status=UserStatus.PENDING,
-            is_verified=False,
+            status=UserStatus.ACTIVE,
+            is_verified=True,
+            password_hash=hash_password(data["password"]),
             geo_location=data.get("geo_location"),
         )
         self.db.add(user)
@@ -194,6 +195,26 @@ class AuthService:
         self.db.add(vendor)
         await self.db.flush()
         return user
+
+    async def vendor_password_login(self, mobile: str, password: str) -> dict:
+        """Authenticate vendor by mobile number + password."""
+        result = await self.db.execute(
+            select(User).where(
+                User.mobile == mobile,
+                User.role == UserRole.VENDOR,
+                User.is_deleted == False,  # noqa: E712
+            )
+        )
+        user = result.scalar_one_or_none()
+
+        if not user or not user.password_hash:
+            raise ValueError("Invalid credentials")
+        if not verify_password(password, user.password_hash):
+            raise ValueError("Invalid credentials")
+        if user.status == UserStatus.BLOCKED:
+            raise PermissionError("Account is blocked")
+
+        return await self.generate_tokens(user)
 
     # ── Retailer Self-Registration ───────────────────────────
 

@@ -1,73 +1,113 @@
 /** Design tokens — AMB-DMP-2026 */
 export const Colors = {
-  primary: '#4f46e5',        // Modern Indigo
-  primaryDark: '#3730a3',    // Deep Indigo
-  primaryLight: '#f5f3ff',   // Very Soft Lavender
-  secondary: '#059669',      // Premium Emerald Green
-  secondaryLight: '#ecfdf5', // Soft Mint
-  warning: '#d97706',        // Amber
-  warningLight: '#fef3c7',   // Soft Amber
-  danger: '#dc2626',         // Coral Red
-  dangerLight: '#fee2e2',    // Soft Coral
-  info: '#0d9488',           // Teal
-  infoLight: '#f0fdfa',      // Soft Teal
-
-  bgPrimary: '#f8fafc',      // Cool Slate Gray Light
-  bgSecondary: '#ffffff',    // White
-  bgTertiary: '#f1f5f9',     // Light gray border/bg
-
-  textPrimary: '#0f172a',    // Dark Slate
-  textSecondary: '#334155',  // Medium Slate
-  textMuted: '#64748b',      // Cool Gray Muted
-
-  border: '#e2e8f0',         // Soft borders
-  borderHover: '#cbd5e1',
-
-  white: '#ffffff',
+  // Brand Colors (Figma Gold/Olive Accent)
+  primary: '#725B00',        // Dark Gold/Olive
+  primaryDark: '#4E3E00',    // Deeper Gold/Brown
+  primaryLight: '#FFF9E6',   // Warm soft gold tint
+  
+  // Secondary / Accent (Figma Golden Yellow)
+  secondary: '#FDD65B',      // Bright Golden Yellow
+  secondaryLight: '#FFFDF2', // Very light gold tint
+  
+  // Semantic Colors
+  success: '#23501D',        // Figma Dark Green
+  successLight: '#EAF2E8',   // Light green tint
+  warning: '#E8C349',        // Golden Yellow
+  warningLight: '#FFFDF2',
+  error: '#BA1A1A',          // Figma Deep Red
+  errorLight: '#FFDAD6',     // Figma Light Red/Rose
+  info: '#6B7280',           // Gray
+  infoLight: '#F0EDEB',      // Warm light gray
+ 
+  // Surface Colors
+  bgPrimary: '#FDF8F8',      // Page Background (warm off-white/beige)
+  bgSecondary: '#FFFFFF',    // Secondary background
+  bgCard: '#FFFFFF',         // Cards
+  bgInput: '#F6F2F2',        // Input fields (soft warm gray)
+  
+  // Text Colors
+  textPrimary: '#1A1A1A',    // Very dark charcoal
+  textSecondary: '#444648',  // Dark slate gray
+  textMuted: '#747777',      // Medium gray
+ 
+  // Borders
+  border: '#C3C6C6',         // Soft borders
+  borderFocused: '#725B00',  // Focused input border color
+ 
+  white: '#FFFFFF',
   black: '#000000',
+  transparent: 'transparent',
 };
 
 export const Typography = {
-  fontFamily: 'System',
-  xs: 12,
+  fontFamily: 'System', // Using System for iOS/Android defaults which looks similar to Inter
+  
+  // Type Scale
+  heading: 28,
+  subheading: 20,
+  body: 16,
+  caption: 14,
+  label: 12,
+  
+  // Compiler helper aliases
+  xs: 10,
   sm: 14,
   base: 16,
-  md: 18,
-  lg: 20,
-  xl: 24,
-  xxl: 30,
-  xxxl: 36,
+
+  // Weights
+  weight: {
+    regular: '400' as const,
+    medium: '500' as const,
+    bold: '700' as const,
+  }
 };
 
+// 4pt Grid System
 export const Spacing = {
-  xs: 6,
-  sm: 10,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
+  xxs: 4,
+  xs: 8,
+  sm: 12,
+  md: 16,    // Standard padding
+  lg: 20,    // Card padding
+  xl: 24,    // Section gap
+  xxl: 32,
+  xxxl: 48,
 };
 
 export const Radius = {
-  sm: 10,
-  md: 16,
-  lg: 24,
-  full: 9999,
+  sm: 8,     // Buttons
+  md: 12,    // Cards
+  lg: 24,    // Chips/tags
+  full: 9999, // FABs and avatars
 };
 
 export const Shadow = {
   sm: {
-    shadowColor: '#64748b',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   md: {
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.07,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3, // For Android
+  },
+  fab: {
+    shadowColor: '#725B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 6,
-  },
+  }
 };

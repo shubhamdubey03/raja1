@@ -18,12 +18,12 @@ const AdminUsers = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try { await api.post('/admin/users', form); setShowModal(false); load(); }
-    catch (err) { alert(err.response?.data?.detail || 'Error'); }
+    catch (err) { alert(err.response?.data?.message || err.response?.data?.detail || 'Error'); }
   };
 
   const toggleStatus = async (id, status) => {
     try { await api.patch(`/admin/users/${id}/status`, { status: status === 'active' ? 'blocked' : 'active' }); load(); }
-    catch (err) { alert('Error'); }
+    catch (err) { alert(err.response?.data?.message || err.response?.data?.detail || 'Error'); }
   };
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;

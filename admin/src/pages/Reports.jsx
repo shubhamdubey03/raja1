@@ -1,6 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { BarChart3, TrendingUp } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from 'recharts';
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-color)',
+        padding: '12px 16px',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-md)',
+        textAlign: 'left'
+      }}>
+        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{label}</p>
+        <p style={{ margin: '4px 0 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--secondary)' }}>
+          Revenue: INR {payload[0].value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+        </p>
+        {payload[1] && (
+          <p style={{ margin: '4px 0 0', fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary)' }}>
+            Orders: {payload[1].value}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
 
 const Reports = () => {
   const [report, setReport] = useState(null);
@@ -75,9 +110,66 @@ const Reports = () => {
 
       <div className="dashboard-card">
         <div className="card-header"><span className="card-title">Sales Trend ({range})</span></div>
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-          <BarChart3 size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
-          <p>Chart visualization available with recharts integration</p>
+        <div style={{ width: '100%', height: 350, marginTop: 20 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={report?.trend_data || []}
+              margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--secondary)" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="var(--secondary)" stopOpacity={0.0}/>
+                </linearGradient>
+                <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" opacity={0.3} />
+              <XAxis 
+                dataKey="label" 
+                tickLine={false} 
+                axisLine={false} 
+                tick={{ fill: 'var(--text-muted)', fontSize: 11 }} 
+              />
+              <YAxis 
+                yAxisId="left"
+                tickLine={false} 
+                axisLine={false} 
+                tickFormatter={(v) => `₹${v}`}
+                tick={{ fill: 'var(--text-muted)', fontSize: 11 }} 
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                tickLine={false} 
+                axisLine={false} 
+                tick={{ fill: 'var(--text-muted)', fontSize: 11 }} 
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area 
+                yAxisId="left"
+                type="monotone" 
+                dataKey="revenue" 
+                name="Revenue"
+                stroke="var(--secondary)" 
+                strokeWidth={2.5}
+                fillOpacity={1} 
+                fill="url(#colorRevenue)" 
+              />
+              <Area 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="orders" 
+                name="Orders"
+                stroke="var(--primary)" 
+                strokeWidth={2.5}
+                fillOpacity={1} 
+                fill="url(#colorOrders)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

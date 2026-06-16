@@ -27,3 +27,17 @@ mobile/android/local.properties
 mobile/android/.gradle/
 mobile/android/app/build/
 mobile/android/.cxx/
+
+# Scratch files, uploads, and local log folders
+/brain/
+/extract_pdf*.py
+/render_pdf.py
+/pdf_*.py
+/pdf_*.txt
+/*.txt
+/*.pdf
+.antigravity_rules.txt
+backend/uploads/
+backend/scratch/
+/pdf_pages/
+/mobile/lint_output.txt

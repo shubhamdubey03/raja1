@@ -3,12 +3,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BookOpen,
-  Warehouse, Tag, BarChart3, Shield, Settings, LogOut, Sun, Moon, Zap
+  Warehouse, Tag, BarChart3, Shield, Settings, LogOut, Sun, Moon, Zap, FolderOpen
 } from 'lucide-react';
 
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/products', label: 'Products', icon: Package },
+  { path: '/categories', label: 'Categories', icon: FolderOpen },
   { path: '/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/users', label: 'Users', icon: Users },
   { path: '/ledger', label: 'Ledger & Credit', icon: BookOpen },
@@ -29,7 +30,7 @@ const Sidebar = ({ darkMode, toggleDarkMode }) => {
     <nav className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-logo"><Zap size={20} /></div>
-        <span className="brand-name">AMB Platform</span>
+        <span className="brand-name">Supply Setu</span>
       </div>
 
       <ul className="sidebar-menu">

@@ -1,14 +1,12 @@
-/**
- * P5-21 — Notifications List Screen
- * In-app notification centre; unread badge; mark as read.
- */
 import React, {useState, useEffect} from 'react';
-import {View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity, StyleSheet} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import api from '../../services/api';
 import {EmptyState} from '../../components';
 import {Colors, Typography, Spacing, Radius, Shadow} from '../../theme';
+import {ArrowLeft} from 'lucide-react-native';
 
-const NotificationsScreen: React.FC = () => {
+const NotificationsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +32,16 @@ const NotificationsScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={20} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <FlatList
         data={notifications}
         keyExtractor={i => i.id}
@@ -63,6 +70,31 @@ const NotificationsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.bgPrimary},
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.bgPrimary,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.bgCard,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.textPrimary,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  headerTitle: {
+    fontSize: Typography.body,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
   list: {padding: Spacing.lg, gap: Spacing.sm},
   notifCard: {
     flexDirection: 'row', alignItems: 'flex-start', backgroundColor: Colors.bgSecondary,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "259567469852",
+    "project_id": "raja-276ff",
+    "storage_bucket": "raja-276ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:259567469852:android:a83d16b4b63234204ee6d9",
+        "android_client_info": {
+          "package_name": "com.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyhYqHdfJojHnWYTP-p7VILBm_H0TjhsM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

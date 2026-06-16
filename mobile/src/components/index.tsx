@@ -1,12 +1,13 @@
 /**
- * Reusable UI components — Buttons, Cards, Input, Badge, Skeleton, OfflineBanner
+ * Reusable UI components — Buttons, Cards, Input, Badge, Skeleton, OfflineBanner, EmptyState, ProductCard
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   TouchableOpacity, Text, StyleSheet, ActivityIndicator,
-  View, TextInput, TextInputProps, Animated,
+  View, TextInput, TextInputProps, ViewStyle, Image,
 } from 'react-native';
-import {Colors, Typography, Spacing, Radius, Shadow} from '../theme';
+import { Colors, Typography, Spacing, Radius, Shadow } from '../theme';
+import { BoxSelect, Archive } from 'lucide-react-native';
 
 // ── PrimaryButton ────────────────────────────────────────────
 interface BtnProps {
@@ -14,32 +15,27 @@ interface BtnProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   fullWidth?: boolean;
   size?: 'sm' | 'md' | 'lg';
   style?: any;
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<BtnProps> = ({
   label, onPress, loading = false, disabled = false,
-  variant = 'primary', fullWidth = true, size = 'md', style,
+  variant = 'primary', fullWidth = true, size = 'md', style, icon
 }) => {
-  const bg = {
-    primary: Colors.primary,
-    secondary: Colors.bgTertiary,
-    danger: Colors.dangerLight,
-    ghost: 'transparent',
-  }[variant];
+  const isPrimary = variant === 'primary';
+  const isDanger = variant === 'danger';
+  const isSecondary = variant === 'secondary';
 
-  const color = {
-    primary: Colors.white,
-    secondary: Colors.textPrimary,
-    danger: Colors.danger,
-    ghost: Colors.primary,
-  }[variant];
-
-  const paddingV = size === 'sm' ? 8 : size === 'lg' ? 16 : 12;
-  const fontSize = size === 'sm' ? Typography.sm : Typography.base;
+  const bg = isPrimary ? Colors.primary : isDanger ? Colors.error : 'transparent';
+  const color = isPrimary || isDanger ? Colors.white : Colors.primary;
+  const borderColor = isSecondary ? Colors.border : 'transparent';
+  const borderWidth = isSecondary ? 1 : 0;
+  const paddingV = Math.max(12, size === 'sm' ? 8 : size === 'lg' ? 16 : 12);
+  const minHeight = 48;
 
   return (
     <TouchableOpacity
@@ -48,22 +44,25 @@ export const Button: React.FC<BtnProps> = ({
       activeOpacity={0.8}
       style={[
         styles.btn,
-        {backgroundColor: bg, paddingVertical: paddingV},
-        fullWidth && {width: '100%'},
-        (disabled || loading) && {opacity: 0.6},
+        { backgroundColor: bg, borderColor, borderWidth, paddingVertical: paddingV, minHeight },
+        fullWidth && { width: '100%' },
+        (disabled || loading) && { opacity: 0.6 },
         style,
       ]}>
       {loading ? (
         <ActivityIndicator color={color} size="small" />
       ) : (
-        <Text style={[styles.btnText, {color, fontSize}]}>{label}</Text>
+        <View style={styles.btnContent}>
+          {icon && <View style={{ marginRight: Spacing.xs }}>{icon}</View>}
+          <Text style={[styles.btnText, { color, fontSize: Typography.body }]}>{label}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );
 };
 
 // ── Card ─────────────────────────────────────────────────────
-export const Card: React.FC<{children: React.ReactNode; style?: any}> = ({children, style}) => (
+export const Card: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => (
   <View style={[styles.card, style]}>{children}</View>
 );
 
@@ -71,55 +70,64 @@ export const Card: React.FC<{children: React.ReactNode; style?: any}> = ({childr
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
+  containerStyle?: ViewStyle;
 }
 
-export const Input: React.FC<InputProps> = ({label, error, ...props}) => (
-  <View style={styles.inputWrap}>
-    {label && <Text style={styles.label}>{label}</Text>}
-    <TextInput
-      style={[styles.input, error ? {borderColor: Colors.danger} : {}]}
-      placeholderTextColor={Colors.textMuted}
-      {...props}
-    />
-    {error && <Text style={styles.errorText}>{error}</Text>}
-  </View>
-);
-
-// ── Badge ─────────────────────────────────────────────────────
-type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'primary';
-export const Badge: React.FC<{label: string; variant?: BadgeVariant}> = ({label, variant = 'primary'}) => {
-  const bg = {
-    success: Colors.secondaryLight, warning: Colors.warningLight,
-    danger: Colors.dangerLight, info: Colors.infoLight, primary: Colors.primaryLight,
-  }[variant];
-  const color = {
-    success: Colors.secondary, warning: Colors.warning,
-    danger: Colors.danger, info: Colors.info, primary: Colors.primary,
-  }[variant];
-
+export const Input: React.FC<InputProps> = ({ label, error, containerStyle, ...props }) => {
+  const [isFocused, setIsFocused] = useState(false);
   return (
-    <View style={[styles.badge, {backgroundColor: bg}]}>
-      <Text style={[styles.badgeText, {color}]}>{label.toUpperCase()}</Text>
+    <View style={[styles.inputWrap, containerStyle]}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <TextInput
+        style={[
+          styles.input,
+          isFocused && { borderColor: Colors.borderFocused },
+          error && { borderColor: Colors.error },
+        ]}
+        placeholderTextColor={Colors.textMuted}
+        onFocus={(e) => { setIsFocused(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setIsFocused(false); props.onBlur?.(e); }}
+        {...props}
+      />
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
 
-// ── SkeletonLoader ─────────────────────────────────────────────
-export const Skeleton: React.FC<{width?: number | string; height?: number; radius?: number}> = ({
+// ── Badge ─────────────────────────────────────────────────────
+export type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'primary';
+export const Badge: React.FC<{ label: string; variant?: BadgeVariant }> = ({ label, variant = 'primary' }) => {
+  const bg = {
+    success: Colors.successLight, warning: Colors.warningLight,
+    error: Colors.errorLight, info: Colors.infoLight, primary: Colors.primaryLight,
+  }[variant];
+  const color = {
+    success: Colors.success, warning: Colors.warning,
+    error: Colors.error, info: Colors.info, primary: Colors.primary,
+  }[variant];
+  return (
+    <View style={[styles.badge, { backgroundColor: bg }]}>
+      <Text style={[styles.badgeText, { color }]}>{label.toUpperCase()}</Text>
+    </View>
+  );
+};
+
+// ── Skeleton ─────────────────────────────────────────────────
+export const Skeleton: React.FC<{ width?: number | string; height?: number; radius?: number }> = ({
   width = '100%', height = 16, radius = Radius.sm,
 }) => (
-  <View style={{width: width as any, height, backgroundColor: Colors.bgTertiary, borderRadius: radius, marginVertical: 4}} />
+  <View style={{ width: width as any, height, backgroundColor: Colors.border, borderRadius: radius, marginVertical: Spacing.xxs }} />
 );
 
 // ── Section Header ────────────────────────────────────────────
-export const SectionHeader: React.FC<{title: string; action?: React.ReactNode}> = ({title, action}) => (
+export const SectionHeader: React.FC<{ title: string; action?: React.ReactNode }> = ({ title, action }) => (
   <View style={styles.sectionHeader}>
     <Text style={styles.sectionTitle}>{title}</Text>
     {action}
   </View>
 );
 
-// ── Offline Banner — P5-23 ────────────────────────────────────
+// ── Offline Banner ────────────────────────────────────────────
 export const OfflineBanner: React.FC = () => (
   <View style={styles.offlineBanner}>
     <Text style={styles.offlineText}>⚠️  No internet connection — data may be outdated</Text>
@@ -127,76 +135,330 @@ export const OfflineBanner: React.FC = () => (
 );
 
 // ── Empty State ───────────────────────────────────────────────
-export const EmptyState: React.FC<{title: string; subtitle?: string; icon?: string}> = ({title, subtitle, icon = '📭'}) => (
+export const EmptyState: React.FC<{
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
+}> = ({ title, subtitle, icon, actionLabel, onAction }) => (
   <View style={styles.emptyWrap}>
-    <Text style={styles.emptyIcon}>{icon}</Text>
+    <View style={styles.emptyIconWrap}>
+      {icon ? (
+        typeof icon === 'string' ? (
+          <Text style={{ fontSize: 32 }}>{icon}</Text>
+        ) : (
+          icon
+        )
+      ) : (
+        <BoxSelect size={48} color={Colors.textMuted} />
+      )}
+    </View>
     <Text style={styles.emptyTitle}>{title}</Text>
     {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
+    {actionLabel && onAction && (
+      <Button label={actionLabel} onPress={onAction} size="sm" style={{ marginTop: Spacing.xl }} />
+    )}
   </View>
 );
 
 // ── Product Card ──────────────────────────────────────────────
+// Premium card used in both the vendor inventory grid and the retailer product list.
 export const ProductCard: React.FC<{
-  name: string; price: number; stockQty: number; threshold: number;
+  name: string;
+  price: number;
+  stockQty: number;
+  threshold: number;
+  imageUrl?: string | null;
+  unit?: string;
   onPress: () => void;
-}> = ({name, price, stockQty, threshold, onPress}) => {
-  const status = stockQty <= 0 ? 'Out of Stock' : stockQty <= threshold ? 'Low Stock' : 'In Stock';
-  const statusVariant: BadgeVariant = stockQty <= 0 ? 'danger' : stockQty <= threshold ? 'warning' : 'success';
+}> = ({ name, price, stockQty, threshold, imageUrl, unit = 'piece', onPress }) => {
+  const [imgError, setImgError] = useState(false);
+
+  const isOutOfStock = stockQty <= 0;
+  const isLowStock = !isOutOfStock && stockQty <= threshold;
+  
+  // Status tag configuration matching user screenshot exactly
+  const dotColor = isOutOfStock ? '#D9743E' : '#2D8A4E';
+  const statusColor = isOutOfStock ? '#92400E' : '#065F46';
+  const statusBg = isOutOfStock ? '#FEF3C7' : '#D1FAE5';
+  const statusLabel = isOutOfStock ? 'SOLD OUT' : 'IN STOCK';
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.productCard}>
-      <View style={styles.productIconWrap}>
-        <Text style={styles.productIcon}>📦</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={styles.productCard}>
+      {/* ── Image ── */}
+      <View style={styles.productImageWrap}>
+        {imageUrl && !imgError ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.productImage}
+            resizeMode="cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <View style={styles.productImagePlaceholder}>
+            <Archive size={28} color={Colors.primary} />
+          </View>
+        )}
+        {/* Status pill overlaid on image */}
+        <View style={[styles.statusTag, { backgroundColor: statusBg }]}>
+          <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
+          <Text style={[styles.statusTagText, { color: statusColor }]}>{statusLabel}</Text>
+        </View>
       </View>
+
+      {/* ── Info ── */}
       <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>{name}</Text>
-        <Text style={styles.productPrice}>INR {(price / 100).toFixed(2)}</Text>
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.productName} numberOfLines={2}>{name}</Text>
+          <Text style={styles.productUnitText}>Pack: {unit}</Text>
+          <Text style={styles.productPriceText}>₹{(price / 100).toFixed(2)}</Text>
+          <Text style={[styles.stockText, { color: isOutOfStock ? '#DC2626' : '#059669' }]}>
+            {isOutOfStock ? 'Unavailable' : `${stockQty} units left`}
+          </Text>
+        </View>
+        
+        {/* Full-width button at bottom of card */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onPress}
+          style={[
+            styles.fullWidthViewBtn,
+            isOutOfStock
+              ? { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#5C5A1E' }
+              : { backgroundColor: '#5C5A1E' }
+          ]}
+        >
+          <Text style={[styles.fullWidthViewBtnText, { color: isOutOfStock ? '#5C5A1E' : '#FFFFFF' }]}>
+            View
+          </Text>
+        </TouchableOpacity>
       </View>
-      <Badge label={status} variant={statusVariant} />
     </TouchableOpacity>
   );
 };
 
+// ── Styles ────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  // Button
   btn: {
-    borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
   },
-  btnText: {fontWeight: '700', letterSpacing: 0.2},
+  btnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+
+  // Card
   card: {
-    backgroundColor: Colors.bgSecondary, borderRadius: Radius.md,
-    padding: Spacing.md, marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    ...Shadow.card,
   },
-  inputWrap: {marginBottom: Spacing.md},
-  label: {fontSize: Typography.sm, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6},
+
+  // Input
+  inputWrap: { marginBottom: Spacing.md },
+  label: {
+    fontSize: Typography.label,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
   input: {
-    backgroundColor: Colors.bgPrimary, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.sm, paddingHorizontal: Spacing.md, paddingVertical: 10,
-    fontSize: Typography.base, color: Colors.textPrimary,
+    backgroundColor: Colors.bgInput,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    fontSize: Typography.body,
+    color: Colors.textPrimary,
+    minHeight: 48,
   },
-  errorText: {fontSize: Typography.xs, color: Colors.danger, marginTop: 4},
-  badge: {paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full, alignSelf: 'flex-start'},
-  badgeText: {fontSize: 10, fontWeight: '700', letterSpacing: 0.5},
-  sectionHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm, marginTop: Spacing.md},
-  sectionTitle: {fontSize: Typography.md, fontWeight: '700', color: Colors.textPrimary},
-  offlineBanner: {backgroundColor: Colors.warning, padding: Spacing.sm, alignItems: 'center'},
-  offlineText: {color: Colors.white, fontSize: Typography.sm, fontWeight: '600'},
-  emptyWrap: {alignItems: 'center', padding: Spacing.xxl},
-  emptyIcon: {fontSize: 48, marginBottom: Spacing.md},
-  emptyTitle: {fontSize: Typography.md, fontWeight: '700', color: Colors.textSecondary, marginBottom: 4},
-  emptySubtitle: {fontSize: Typography.sm, color: Colors.textMuted, textAlign: 'center'},
+  errorText: {
+    fontSize: Typography.caption,
+    color: Colors.error,
+    marginTop: Spacing.xxs,
+  },
+
+  // Badge
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: Radius.lg,
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    fontSize: Typography.label,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: Typography.subheading,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+
+  // Offline
+  offlineBanner: {
+    backgroundColor: Colors.warning,
+    padding: Spacing.sm,
+    alignItems: 'center',
+  },
+  offlineText: {
+    color: Colors.white,
+    fontSize: Typography.caption,
+    fontWeight: '500',
+  },
+
+  // Empty State
+  emptyWrap: {
+    alignItems: 'center',
+    padding: Spacing.xxxl,
+    justifyContent: 'center',
+  },
+  emptyIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.bgInput,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: Typography.subheading,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: Typography.body,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+
+  // Product Card
   productCard: {
-    backgroundColor: Colors.bgSecondary, borderRadius: Radius.md,
-    padding: Spacing.md, marginBottom: Spacing.sm, flexDirection: 'row',
-    alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '48.5%', // Ensure consistent sizing in 2-column grid
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#FAF7F2',
+    marginBottom: 12,
+    shadowColor: '#725B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  productIconWrap: {
-    width: 48, height: 48, borderRadius: Radius.sm, backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center',
+  productImageWrap: {
+    width: '100%',
+    aspectRatio: 1.1,
+    backgroundColor: '#FAF7F2',
+    position: 'relative',
+    overflow: 'hidden',
   },
-  productIcon: {fontSize: 22},
-  productInfo: {flex: 1},
-  productName: {fontSize: Typography.sm, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4},
-  productPrice: {fontSize: Typography.sm, color: Colors.primary, fontWeight: '600'},
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7F4EF',
+  },
+  statusTag: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1.5,
+    elevation: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  productInfo: {
+    padding: 12,
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+    lineHeight: 18,
+    minHeight: 36, // Ensure name fits in exactly two lines nicely
+    marginBottom: 2,
+  },
+  productUnitText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  productPriceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  stockText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  fullWidthViewBtn: {
+    width: '100%',
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  fullWidthViewBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

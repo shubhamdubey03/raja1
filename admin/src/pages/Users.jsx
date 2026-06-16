@@ -7,6 +7,64 @@ const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newVendor, setNewVendor] = useState({
+    mobile: '',
+    full_name: '',
+    business_name: '',
+    password: '',
+    gst_number: '',
+    pan_number: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleAddVendor = async (e) => {
+    e.preventDefault();
+    if (!newVendor.mobile || !newVendor.full_name || !newVendor.business_name || !newVendor.password) {
+      alert('Please fill in all required fields (Mobile, Full Name, Business Name, Password)');
+      return;
+    }
+    let formattedMobile = newVendor.mobile.trim();
+    if (!formattedMobile.startsWith('+')) {
+      if (formattedMobile.length === 10) {
+        formattedMobile = `+91${formattedMobile}`;
+      } else {
+        alert('Please enter a valid 10-digit mobile number or include country code (e.g. +91...)');
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      await api.post('/vendor/create', {
+        ...newVendor,
+        mobile: formattedMobile,
+      });
+      alert('Vendor created successfully!');
+      setShowAddModal(false);
+      setNewVendor({
+        mobile: '',
+        full_name: '',
+        business_name: '',
+        password: '',
+        gst_number: '',
+        pan_number: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: ''
+      });
+      loadUsers();
+    } catch (err) {
+      alert(err.response?.data?.detail || err.response?.data?.message || 'Error creating vendor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -35,7 +93,7 @@ const Users = () => {
       await api.patch(endpoint, { status: newStatus });
       loadUsers();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error updating status');
+      alert(err.response?.data?.message || err.response?.data?.detail || 'Error updating status');
     }
   };
 
@@ -55,6 +113,11 @@ const Users = () => {
           <h1>User Management</h1>
           <p>Manage registered vendors and retailers</p>
         </div>
+        {tab === 'vendors' && (
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            Add Vendor
+          </button>
+        )}
       </div>
 
       <div className="tab-row">
@@ -201,6 +264,143 @@ const Users = () => {
           </table>
         )}
       </div>
+
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>Add New Vendor</h2>
+              <button className="btn-close" onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>&times;</button>
+            </div>
+            <form onSubmit={handleAddVendor}>
+              <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Full Name *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      value={newVendor.full_name}
+                      onChange={e => setNewVendor({ ...newVendor, full_name: e.target.value })}
+                      placeholder="e.g. Rajesh Sharma"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Mobile Number *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      value={newVendor.mobile}
+                      onChange={e => setNewVendor({ ...newVendor, mobile: e.target.value })}
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Business Name *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      value={newVendor.business_name}
+                      onChange={e => setNewVendor({ ...newVendor, business_name: e.target.value })}
+                      placeholder="e.g. Sharma Logistics"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Password *</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      required
+                      value={newVendor.password}
+                      onChange={e => setNewVendor({ ...newVendor, password: e.target.value })}
+                      placeholder="At least 6 characters"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">GST Number (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newVendor.gst_number}
+                      onChange={e => setNewVendor({ ...newVendor, gst_number: e.target.value })}
+                      placeholder="15-character GSTIN"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">PAN Number (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newVendor.pan_number}
+                      onChange={e => setNewVendor({ ...newVendor, pan_number: e.target.value })}
+                      placeholder="10-character PAN"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Address (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newVendor.address}
+                    onChange={e => setNewVendor({ ...newVendor, address: e.target.value })}
+                    placeholder="Street address, locality"
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">City (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newVendor.city}
+                      onChange={e => setNewVendor({ ...newVendor, city: e.target.value })}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">State (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newVendor.state}
+                      onChange={e => setNewVendor({ ...newVendor, state: e.target.value })}
+                      placeholder="State"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Pincode (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newVendor.pincode}
+                      onChange={e => setNewVendor({ ...newVendor, pincode: e.target.value })}
+                      placeholder="6-digit ZIP"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Creating...' : 'Create Vendor'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

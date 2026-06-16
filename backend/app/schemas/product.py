@@ -5,47 +5,14 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-# ── Category ─────────────────────────────────────────────────
-
-class CategoryCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    parent_id: Optional[UUID] = None
-    visible_to_vendor: bool = True
-    visible_to_retailer: bool = True
-
-
-class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    parent_id: Optional[UUID] = None
-    visible_to_vendor: Optional[bool] = None
-    visible_to_retailer: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-class CategoryResponse(BaseModel):
-    id: UUID
-    name: str
-    slug: str
-    description: Optional[str]
-    image_url: Optional[str]
-    parent_id: Optional[UUID]
-    visible_to_vendor: bool
-    visible_to_retailer: bool
-    is_active: bool
-
-    model_config = {"from_attributes": True}
-
-
 # ── Product ──────────────────────────────────────────────────
 
 class ProductCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     sku: str = Field(..., min_length=1, max_length=50)
     description: Optional[str] = None
+    return_policy: Optional[str] = "No returns allowed"
+    return_window_days: int = 7
     unit: str = "piece"
     hsn_code: Optional[str] = None
     base_price: int = Field(..., gt=0, description="Price in paise")
@@ -55,6 +22,7 @@ class ProductCreate(BaseModel):
     stock_qty: int = Field(default=0, ge=0)
     low_stock_threshold: int = Field(default=10, ge=0)
     category_id: UUID
+    sub_category_id: Optional[UUID] = None
     status: str = "active"
     image_urls: Optional[List[str]] = None
 
@@ -62,6 +30,8 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    return_policy: Optional[str] = None
+    return_window_days: Optional[int] = None
     unit: Optional[str] = None
     hsn_code: Optional[str] = None
     base_price: Optional[int] = None
@@ -71,6 +41,7 @@ class ProductUpdate(BaseModel):
     stock_qty: Optional[int] = None
     low_stock_threshold: Optional[int] = None
     category_id: Optional[UUID] = None
+    sub_category_id: Optional[UUID] = None
     status: Optional[str] = None
     image_urls: Optional[List[str]] = None
 
@@ -88,6 +59,8 @@ class ProductResponse(BaseModel):
     slug: str
     sku: str
     description: Optional[str]
+    return_policy: Optional[str] = None
+    return_window_days: int = 7
     unit: str
     hsn_code: Optional[str]
     base_price: int
@@ -96,6 +69,7 @@ class ProductResponse(BaseModel):
     low_stock_threshold: int
     status: str
     category_id: UUID
+    sub_category_id: Optional[UUID] = None
     images: List[ProductImageResponse] = []
     vendor_price: Optional[int] = None
     retailer_price: Optional[int] = None

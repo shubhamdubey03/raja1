@@ -11,21 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_user, require_admin
-from app.models.category import Category
 from app.models.product import Product, ProductImage, ProductStatus
 from app.models.pricing import VendorPricing, RetailerPricing, DealerPricing
 from app.models.user import User, UserRole
 from app.schemas.product import (
     BulkPriceUpdate,
-    CategoryCreate,
-    CategoryResponse,
-    CategoryUpdate,
     ProductCreate,
     ProductResponse,
     ProductUpdate,
     StockAdjustment,
 )
 from app.services.audit_service import AuditService
+from app.services.category_service import validate_leaf_category
 from app.utils.slug import generate_slug, generate_unique_slug
 
 router = APIRouter(tags=["Products & Categories"])
@@ -59,90 +56,6 @@ async def upload_file(
     return {"image_url": f"{backend_url}/uploads/{filename}"}
 
 
-# ── P3-01: Category CRUD ────────────────────────────────────
-
-@router.post("/categories", response_model=CategoryResponse)
-async def create_category(
-    req: CategoryCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """Admin creates a category."""
-    audit = AuditService(db)
-    cat = Category(
-        name=req.name,
-        slug=generate_unique_slug(req.name),
-        description=req.description,
-        image_url=req.image_url,
-        parent_id=req.parent_id,
-        visible_to_vendor=req.visible_to_vendor,
-        visible_to_retailer=req.visible_to_retailer,
-    )
-    db.add(cat)
-    await db.flush()
-    await audit.log_action(current_user, "create_category", "category", cat.id)
-    return cat
-
-
-@router.get("/categories", response_model=List[CategoryResponse])
-async def list_categories(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """List categories — filtered by role visibility."""
-    query = select(Category).where(Category.is_deleted == False, Category.is_active == True)  # noqa: E712
-    if current_user.role == UserRole.VENDOR:
-        query = query.where(Category.visible_to_vendor == True)  # noqa: E712
-    elif current_user.role == UserRole.RETAILER:
-        query = query.where(Category.visible_to_retailer == True)  # noqa: E712
-    result = await db.execute(query.order_by(Category.name))
-    return result.scalars().all()
-
-
-@router.patch("/categories/{cat_id}", response_model=CategoryResponse)
-async def update_category(
-    cat_id: UUID,
-    req: CategoryUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """Admin updates a category."""
-    result = await db.execute(select(Category).where(Category.id == cat_id, Category.is_deleted == False))  # noqa: E712
-    cat = result.scalar_one_or_none()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Category not found")
-
-    audit = AuditService(db)
-    update_data = req.model_dump(exclude_unset=True)
-    if "name" in update_data:
-        update_data["slug"] = generate_unique_slug(update_data["name"])
-    for k, v in update_data.items():
-        setattr(cat, k, v)
-    await db.flush()
-    await audit.log_action(current_user, "update_category", "category", cat_id, update_data)
-    return cat
-
-
-@router.delete("/categories/{cat_id}")
-async def delete_category(
-    cat_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    """Soft-delete a category."""
-    from datetime import datetime, timezone
-    result = await db.execute(select(Category).where(Category.id == cat_id, Category.is_deleted == False))  # noqa: E712
-    cat = result.scalar_one_or_none()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Category not found")
-    cat.is_deleted = True
-    cat.deleted_at = datetime.now(timezone.utc)
-    await db.flush()
-    audit = AuditService(db)
-    await audit.log_action(current_user, "delete_category", "category", cat_id)
-    return {"message": "Category deleted"}
-
-
 # ── P3-02: Product CRUD ─────────────────────────────────────
 
 @router.post("/products", response_model=ProductResponse)
@@ -156,11 +69,20 @@ async def create_product(
     if req.gst_rate not in (0, 5, 12, 18, 28):
         raise HTTPException(status_code=400, detail="GST rate must be 0, 5, 12, 18, or 28")
 
+    try:
+        await validate_leaf_category(req.category_id, db)
+        if req.sub_category_id:
+            await validate_leaf_category(req.sub_category_id, db)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     product = Product(
         name=req.name,
         slug=generate_unique_slug(req.name),
         sku=req.sku,
         description=req.description,
+        return_policy=req.return_policy,
+        return_window_days=req.return_window_days,
         unit=req.unit,
         hsn_code=req.hsn_code,
         base_price=req.base_price,
@@ -168,6 +90,7 @@ async def create_product(
         stock_qty=req.stock_qty,
         low_stock_threshold=req.low_stock_threshold,
         category_id=req.category_id,
+        sub_category_id=req.sub_category_id,
         status=ProductStatus(req.status),
     )
     db.add(product)
@@ -198,6 +121,9 @@ async def create_product(
 async def list_products(
     keyword: Optional[str] = None,
     category_id: Optional[UUID] = None,
+    sub_category_id: Optional[UUID] = None,
+    category: Optional[str] = None,
+    sub_category: Optional[str] = None,
     price_min: Optional[int] = None,
     price_max: Optional[int] = None,
     in_stock: Optional[bool] = None,
@@ -219,7 +145,20 @@ async def list_products(
             )
         )
     if category_id:
-        query = query.where(Product.category_id == category_id)
+        query = query.where(or_(Product.category_id == category_id, Product.sub_category_id == category_id))
+    elif category:
+        cat_select = select(Category.id).where(or_(Category.slug == category, Category.name.ilike(category)), Category.is_deleted == False)
+        cat_id = (await db.execute(cat_select)).scalar_one_or_none()
+        if cat_id:
+            query = query.where(Product.category_id == cat_id)
+
+    if sub_category_id:
+        query = query.where(Product.sub_category_id == sub_category_id)
+    elif sub_category:
+        subcat_select = select(Category.id).where(or_(Category.slug == sub_category, Category.name.ilike(sub_category)), Category.is_deleted == False)
+        subcat_id = (await db.execute(subcat_select)).scalar_one_or_none()
+        if subcat_id:
+            query = query.where(Product.sub_category_id == subcat_id)
     if price_min is not None:
         query = query.where(Product.base_price >= price_min)
     if price_max is not None:
@@ -258,6 +197,8 @@ async def list_products(
             "slug": p.slug,
             "sku": p.sku,
             "description": p.description,
+            "return_policy": p.return_policy,
+            "return_window_days": p.return_window_days,
             "unit": p.unit,
             "hsn_code": p.hsn_code,
             "base_price": resolved_price,
@@ -266,6 +207,7 @@ async def list_products(
             "low_stock_threshold": p.low_stock_threshold,
             "status": p.status.value,
             "category_id": p.category_id,
+            "sub_category_id": p.sub_category_id,
             "images": [{"id": img.id, "image_url": img.image_url, "sort_order": img.sort_order} for img in p.images],
             "vendor_price": p.vendor_price,
             "retailer_price": p.retailer_price
@@ -300,6 +242,8 @@ async def get_product(
         "slug": product.slug,
         "sku": product.sku,
         "description": product.description,
+        "return_policy": product.return_policy,
+        "return_window_days": product.return_window_days,
         "unit": product.unit,
         "hsn_code": product.hsn_code,
         "base_price": resolved_price,
@@ -308,6 +252,7 @@ async def get_product(
         "low_stock_threshold": product.low_stock_threshold,
         "status": product.status.value,
         "category_id": product.category_id,
+        "sub_category_id": product.sub_category_id,
         "images": [{"id": img.id, "image_url": img.image_url, "sort_order": img.sort_order} for img in product.images],
         "vendor_price": product.vendor_price,
         "retailer_price": product.retailer_price
@@ -334,6 +279,16 @@ async def update_product(
         raise HTTPException(status_code=400, detail="GST rate must be 0, 5, 12, 18, or 28")
     if "name" in update_data:
         update_data["slug"] = generate_unique_slug(update_data["name"])
+    if "category_id" in update_data:
+        try:
+            await validate_leaf_category(update_data["category_id"], db)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    if "sub_category_id" in update_data and update_data["sub_category_id"] is not None:
+        try:
+            await validate_leaf_category(update_data["sub_category_id"], db)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
 
     # Handle image urls update
     if "image_urls" in update_data:

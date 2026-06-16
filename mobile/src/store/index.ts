@@ -8,16 +8,18 @@ import {persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, R
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import authReducer from './slices/authSlice';
 import cartReducer from './slices/cartSlice';
+import settingsReducer from './slices/settingsSlice';
 
 const persistConfig = {
   key: 'amb_root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'cart'],
+  whitelist: ['auth', 'cart', 'settings'],
 };
 
 const rootReducer = combineReducers({
   auth: authReducer,
   cart: cartReducer,
+  settings: settingsReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -81,10 +81,15 @@ class OrderResponse(BaseModel):
     delivery_address: Optional[str]
     created_at: datetime
     items: List[OrderItemResponse] = []
+    return_image_url: Optional[str] = None
+    return_reason: Optional[str] = None
     model_config = {"from_attributes": True}
 
 
-# ── Payment ──────────────────────────────────────────────────
+class OrderReturnRequest(BaseModel):
+    return_image_url: str = Field(..., description="Mandatory URL of captured return verification image")
+    return_reason: Optional[str] = None
+
 
 class PaymentInitiateRequest(BaseModel):
     order_id: UUID

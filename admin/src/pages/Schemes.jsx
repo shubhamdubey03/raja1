@@ -26,6 +26,7 @@ const Schemes = () => {
     valid_until: '',
     scope_type: '', // '', 'product', 'category'
     scope_id: '',
+    applicable_to: 'all',
     description: ''
   });
 
@@ -87,6 +88,7 @@ const Schemes = () => {
         valid_until: new Date(discountForm.valid_until).toISOString(),
         scope_type: discountForm.scope_type || null,
         scope_id: discountForm.scope_id || null,
+        applicable_to: discountForm.applicable_to,
         description: discountForm.description || null
       };
 
@@ -95,7 +97,7 @@ const Schemes = () => {
       alert('Discount code created successfully!');
       loadData();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error creating discount code');
+      alert(err.response?.data?.message || err.response?.data?.detail || 'Error creating discount code');
     }
   };
 
@@ -106,7 +108,7 @@ const Schemes = () => {
       await api.delete(`/admin/discounts/${id}`);
       loadData();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error deleting discount code');
+      alert(err.response?.data?.message || err.response?.data?.detail || 'Error deleting discount code');
     }
   };
 
@@ -132,7 +134,7 @@ const Schemes = () => {
       alert('Dealer scheme created successfully!');
       loadData();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error creating dealer scheme');
+      alert(err.response?.data?.message || err.response?.data?.detail || 'Error creating dealer scheme');
     }
   };
 
@@ -143,7 +145,7 @@ const Schemes = () => {
       await api.delete(`/admin/dealer-schemes/${id}`);
       loadData();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error deleting dealer scheme');
+      alert(err.response?.data?.message || err.response?.data?.detail || 'Error deleting dealer scheme');
     }
   };
 
@@ -192,6 +194,7 @@ const Schemes = () => {
                 <th>Usage Limit</th>
                 <th>Validity</th>
                 <th>Scope</th>
+                <th>Applicable To</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -231,6 +234,11 @@ const Schemes = () => {
                     )}
                   </td>
                   <td>
+                    <span className={`badge ${d.applicable_to === 'all' ? 'active' : 'warning'}`} style={{ textTransform: 'uppercase' }}>
+                      {d.applicable_to}
+                    </span>
+                  </td>
+                  <td>
                     <button className="btn-icon delete-btn" onClick={() => handleDeleteDiscount(d.id)}>
                       <Trash2 size={14} />
                     </button>
@@ -239,7 +247,7 @@ const Schemes = () => {
               ))}
               {discounts.length === 0 && (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                     No discount codes created yet.
                   </td>
                 </tr>
@@ -414,35 +422,47 @@ const Schemes = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="form-group">
-                    <label className="form-label">Coupon Scope</label>
+                     <label className="form-label">Coupon Scope</label>
+                     <select
+                       className="form-select"
+                       value={discountForm.scope_type}
+                       onChange={e => setDiscountForm({ ...discountForm, scope_type: e.target.value, scope_id: '' })}
+                     >
+                       <option value="">Global (All items)</option>
+                       <option value="product">Specific Product</option>
+                       <option value="category">Specific Category</option>
+                     </select>
+                   </div>
+                   <div className="form-group">
+                     <label className="form-label">Applicable To</label>
+                     <select
+                       className="form-select"
+                       value={discountForm.applicable_to}
+                       onChange={e => setDiscountForm({ ...discountForm, applicable_to: e.target.value })}
+                     >
+                       <option value="all">All (Retailers & Vendors)</option>
+                       <option value="retailer">Retailers Only</option>
+                       <option value="vendor">Vendors Only</option>
+                     </select>
+                   </div>
+                </div>
+                {discountForm.scope_type && (
+                  <div className="form-group">
+                    <label className="form-label">Select {discountForm.scope_type === 'product' ? 'Product' : 'Category'}</label>
                     <select
                       className="form-select"
-                      value={discountForm.scope_type}
-                      onChange={e => setDiscountForm({ ...discountForm, scope_type: e.target.value, scope_id: '' })}
+                      value={discountForm.scope_id}
+                      onChange={e => setDiscountForm({ ...discountForm, scope_id: e.target.value })}
+                      required
                     >
-                      <option value="">Global (All items)</option>
-                      <option value="product">Specific Product</option>
-                      <option value="category">Specific Category</option>
+                      <option value="">Select scope target</option>
+                      {discountForm.scope_type === 'product'
+                        ? products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                        : categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                      }
                     </select>
                   </div>
-                  {discountForm.scope_type && (
-                    <div className="form-group">
-                      <label className="form-label">Select {discountForm.scope_type === 'product' ? 'Product' : 'Category'}</label>
-                      <select
-                        className="form-select"
-                        value={discountForm.scope_id}
-                        onChange={e => setDiscountForm({ ...discountForm, scope_id: e.target.value })}
-                        required
-                      >
-                        <option value="">Select scope target</option>
-                        {discountForm.scope_type === 'product'
-                          ? products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
-                          : categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                        }
-                      </select>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Description / Internal Notes</label>

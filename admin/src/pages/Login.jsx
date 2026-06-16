@@ -29,7 +29,7 @@ const Login = () => {
             <Zap size={28} />
           </div>
         </div>
-        <h1>AMB Platform</h1>
+        <h1>Supply Setu</h1>
         <p>B2B Vendor & Retailer Management</p>
 
         {error && <div className="login-error">{error}</div>}

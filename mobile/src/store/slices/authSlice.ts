@@ -15,6 +15,30 @@ interface AuthState {
     mobile: string;
     role: UserRole;
     status: string;
+    avatar_url?: string | null;
+    is_verified?: boolean;
+    retailer_profile?: {
+      id: string;
+      business_name: string;
+      owner_name: string;
+      business_type?: string;
+      gst_number?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      credit_limit: number;
+    } | null;
+    vendor_profile?: {
+      id: string;
+      business_name: string;
+      gst_number?: string;
+      pan_number?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    } | null;
   } | null;
   isAuthenticated: boolean;
 }

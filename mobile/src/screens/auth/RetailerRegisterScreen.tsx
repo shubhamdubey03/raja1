@@ -2,16 +2,18 @@
  * P5-07 — Retailer Self-Registration + OTP
  * Multi-step: Business details → OTP → immediate access
  */
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TouchableOpacity} from 'react-native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ArrowRight, Store } from 'lucide-react-native';
 import api from '../../services/api';
-import {setCredentials} from '../../store/slices/authSlice';
-import {useAppDispatch} from '../../hooks/useRedux';
-import {Button, Input} from '../../components';
-import {Colors, Typography, Spacing, Radius} from '../../theme';
+import { setCredentials } from '../../store/slices/authSlice';
+import { useAppDispatch } from '../../hooks/useRedux';
+import { Button, Input } from '../../components';
+import { Colors, Typography, Spacing, Radius, Shadow } from '../../theme';
 
-interface Props {navigation: NativeStackNavigationProp<any>}
+interface Props { navigation: NativeStackNavigationProp<any> }
 
 interface FormData {
   business_name: string;
@@ -23,7 +25,13 @@ interface FormData {
   state: string;
 }
 
-const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
+const steps = [
+  { label: 'Business Details', active: true },
+  { label: 'OTP Verification', active: false },
+  { label: 'Access Granted', active: false },
+];
+
+const RetailerRegisterScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [form, setForm] = useState<FormData>({
@@ -34,7 +42,7 @@ const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
   const [timer, setTimer] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const update = (key: keyof FormData, val: string) => setForm(f => ({...f, [key]: val}));
+  const update = (key: keyof FormData, val: string) => setForm(f => ({ ...f, [key]: val }));
 
   const startTimer = () => {
     setTimer(60);
@@ -50,7 +58,7 @@ const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
     }
     setLoading(true);
     try {
-      await api.post('/retailer/auth/register', {...form, mobile: `+91${form.mobile}`});
+      await api.post('/retailer/auth/register', { ...form, mobile: `+91${form.mobile}` });
       setStep('otp');
       startTimer();
     } catch (err: any) {
@@ -64,14 +72,17 @@ const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
     if (otp.length !== 6) { Alert.alert('Error', 'Enter 6-digit OTP'); return; }
     setLoading(true);
     try {
-      const res = await api.post('/retailer/auth/otp/verify', {mobile: `+91${form.mobile}`, otp});
-      const profile = await api.get('/me', {headers: {Authorization: `Bearer ${res.data.access_token}`}});
+      const res = await api.post('/retailer/auth/otp/verify', {
+        mobile: `+91${form.mobile}`,
+        otp,
+        purpose: 'register',
+      });
+      const profile = await api.get('/me', { headers: { Authorization: `Bearer ${res.data.access_token}` } });
       dispatch(setCredentials({
         accessToken: res.data.access_token,
         refreshToken: res.data.refresh_token,
-        user: {...profile.data, role: 'retailer'},
+        user: { ...profile.data, role: 'retailer' },
       }));
-      navigation.replace('RetailerTab');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'OTP verification failed');
     } finally {
@@ -79,51 +90,94 @@ const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
     }
   };
 
-  const BUSINESS_TYPES = ['General Store', 'Supermarket', 'Medical', 'Electronics', 'Clothing', 'Other'];
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.back} onPress={() => step === 'otp' ? setStep('form') : navigation.goBack()}>← Back</Text>
-        <Text style={styles.roleChip}>🏪 Retailer Registration</Text>
-        <Text style={styles.title}>{step === 'form' ? 'Business Details' : 'Verify OTP'}</Text>
+        <TouchableOpacity onPress={() => step === 'otp' ? setStep('form') : navigation.goBack()} activeOpacity={0.7}>
+          <Text style={styles.back}>← Back</Text>
+        </TouchableOpacity>
 
-        {/* Step 1 — Progress indicator */}
-        <View style={styles.progressRow}>
-          {['Details', 'OTP', 'Done'].map((s, i) => (
-            <View key={s} style={styles.progressItem}>
-              <View style={[styles.progressDot, (step === 'form' ? i === 0 : i <= 1) && styles.progressDotActive]} />
-              <Text style={styles.progressLabel}>{s}</Text>
-            </View>
-          ))}
+        <View style={styles.heroCard}>
+          <View style={styles.heroBadge}>
+            <Store size={18} color={Colors.primaryDark} />
+          </View>
+          <Text style={styles.heroTitle}>Retailer Registration</Text>
+          <Text style={styles.heroSubtitle}>Help us build your business profile for curated inventory, offers, and quick onboarding.</Text>
         </View>
 
-        {step === 'form' ? (
-          <>
-            <Input label="Business Name *" value={form.business_name} onChangeText={t => update('business_name', t)} placeholder="Raja General Store" />
-            <Input label="Owner Name *" value={form.owner_name} onChangeText={t => update('owner_name', t)} placeholder="Rajesh Kumar" />
-            <View style={styles.phoneRow}>
-              <View style={styles.prefix}><Text style={styles.prefixText}>+91</Text></View>
-              <Input label="Mobile *" value={form.mobile} onChangeText={t => update('mobile', t.replace(/\D/g, '').slice(0, 10))} keyboardType="number-pad" placeholder="9876543210" style={{flex: 1, marginBottom: 0}} />
-            </View>
-            <Input label="Business Type" value={form.business_type} onChangeText={t => update('business_type', t)} placeholder="General Store" />
-            <Input label="GST Number (optional)" value={form.gst_number} onChangeText={t => update('gst_number', t.toUpperCase())} placeholder="29AADCB2230M1ZP" />
-            <Input label="City" value={form.city} onChangeText={t => update('city', t)} placeholder="Mumbai" />
-            <Input label="State" value={form.state} onChangeText={t => update('state', t)} placeholder="Maharashtra" />
-            <Button label="Register & Send OTP" onPress={handleRegister} loading={loading} />
-            <TouchableOpacity onPress={() => navigation.navigate('VendorLogin', {role: 'retailer'})} style={styles.signInLink}>
-              <Text style={styles.signInText}>Already registered? Sign In</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={styles.subtitle}>OTP sent to +91{form.mobile}</Text>
-            <Input label="6-Digit OTP" value={otp} onChangeText={t => setOtp(t.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" placeholder="------" maxLength={6} />
-            <Button label="Verify & Continue" onPress={handleVerify} loading={loading} />
-            <Text style={styles.resend} onPress={timer === 0 ? handleRegister : undefined}>
-              {timer > 0 ? `Resend in ${timer}s` : 'Resend OTP'}
-            </Text>
-          </>
+        <View style={styles.stepperRow}>
+          <View style={styles.stepperLine} />
+          {steps.map((item, index) => {
+            const isActive = step === 'form' ? index === 0 : index === 1;
+            return (
+              <View key={item.label} style={styles.stepItem}>
+                <View style={[styles.stepCircle, isActive && styles.stepCircleActive]}>
+                  <Text style={[styles.stepNumber, isActive && styles.stepNumberActive]}>{index + 1}</Text>
+                </View>
+                <Text style={[styles.stepText, isActive && styles.stepTextActive]} numberOfLines={2}>{item.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <Text style={styles.sectionTitle}>{step === 'form' ? 'Business Details' : 'Verify OTP'}</Text>
+
+        <View style={styles.formCard}>
+          {step === 'form' ? (
+            <>
+              <Input label="Business Name *" value={form.business_name} onChangeText={t => update('business_name', t)} placeholder="Raja General Store" containerStyle={styles.field} />
+              <Input label="Owner Name *" value={form.owner_name} onChangeText={t => update('owner_name', t)} placeholder="Rajesh Kumar" containerStyle={styles.field} />
+              <View style={styles.field}>
+                <Text style={styles.inputLabel}>Mobile Number *</Text>
+                <View style={styles.phoneRow}>
+                  <View style={styles.prefix}><Text style={styles.prefixText}>+91</Text></View>
+                  <Input
+                    value={form.mobile}
+                    onChangeText={t => update('mobile', t.replace(/\D/g, '').slice(0, 10))}
+                    keyboardType="number-pad"
+                    placeholder="9876543210"
+                    style={styles.phoneInput}
+                    containerStyle={{ marginBottom: 0, flex: 1 }}
+                  />
+                </View>
+              </View>
+              <Input label="Business Type" value={form.business_type} onChangeText={t => update('business_type', t)} placeholder="General Store" containerStyle={styles.field} />
+              <Input label="GST Number (optional)" value={form.gst_number} onChangeText={t => update('gst_number', t.toUpperCase())} placeholder="29AADCB2230M1ZP" containerStyle={styles.field} />
+              <Input label="City" value={form.city} onChangeText={t => update('city', t)} placeholder="Mumbai" containerStyle={styles.field} />
+              <Input label="State" value={form.state} onChangeText={t => update('state', t)} placeholder="Maharashtra" containerStyle={styles.field} />
+              <Button
+                label="Continue"
+                onPress={handleRegister}
+                loading={loading}
+                icon={<ArrowRight size={18} color={Colors.white} />}
+                style={styles.ctaButton}
+              />
+              <Text style={styles.disclaimer}>By continuing, you agree to our Terms of Service and Privacy Policy.</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.otpIntro}>Enter the 6-digit code sent to +91{form.mobile}</Text>
+              <Input label="OTP Code" value={otp} onChangeText={t => setOtp(t.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" placeholder="123456" maxLength={6} containerStyle={styles.field} />
+              <Button
+                label="Verify & Continue"
+                onPress={handleVerify}
+                loading={loading}
+                icon={<ArrowRight size={18} color={Colors.white} />}
+                style={styles.ctaButton}
+              />
+              <TouchableOpacity onPress={timer === 0 ? handleRegister : undefined} disabled={timer > 0} activeOpacity={0.7}>
+                <Text style={[styles.resend, timer > 0 && styles.resendDisabled]}>
+                  {timer > 0 ? `Resend in ${timer}s` : 'Resend OTP'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        {step === 'form' && (
+          <TouchableOpacity onPress={() => navigation.navigate('VendorLogin', { role: 'retailer' })} activeOpacity={0.7}>
+            <Text style={styles.signInText}>Already registered? Sign In</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -131,23 +185,75 @@ const RetailerRegisterScreen: React.FC<Props> = ({navigation}) => {
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: Colors.bgPrimary},
-  content: {padding: Spacing.lg, paddingTop: Spacing.xl},
-  back: {color: Colors.primary, fontWeight: '600', marginBottom: Spacing.lg, fontSize: Typography.base},
-  roleChip: {alignSelf: 'flex-start', backgroundColor: Colors.secondaryLight, color: Colors.secondary, paddingHorizontal: Spacing.md, paddingVertical: 4, borderRadius: Radius.full, fontWeight: '700', fontSize: Typography.xs, marginBottom: Spacing.md},
-  title: {fontSize: Typography.xxl, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.md, letterSpacing: -0.5},
-  subtitle: {fontSize: Typography.sm, color: Colors.textSecondary, marginBottom: Spacing.lg},
-  progressRow: {flexDirection: 'row', gap: Spacing.lg, marginBottom: Spacing.xl},
-  progressItem: {alignItems: 'center', gap: 4},
-  progressDot: {width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.border},
-  progressDotActive: {backgroundColor: Colors.primary},
-  progressLabel: {fontSize: Typography.xs, color: Colors.textMuted},
-  phoneRow: {flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 0},
-  prefix: {backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, marginTop: 22},
-  prefixText: {fontSize: Typography.base, fontWeight: '600', color: Colors.textPrimary},
-  resend: {textAlign: 'center', color: Colors.primary, fontWeight: '600', marginTop: Spacing.md, fontSize: Typography.sm},
-  signInLink: {marginTop: Spacing.md, alignSelf: 'center'},
-  signInText: {color: Colors.secondary, fontWeight: '600', fontSize: Typography.sm},
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  content: { padding: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.xxxl },
+  back: { color: Colors.primary, fontWeight: '700', marginBottom: Spacing.md, fontSize: Typography.base },
+  heroCard: {
+    backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadow.card,
+  },
+  heroBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  heroTitle: { fontSize: Typography.subheading, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.xs },
+  heroSubtitle: { fontSize: Typography.base, color: Colors.textSecondary, lineHeight: 22 },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.xl, position: 'relative' },
+  stepperLine: { position: 'absolute', top: 16, left: Spacing.md, right: Spacing.md, height: 1, backgroundColor: Colors.border },
+  stepItem: { flex: 1, alignItems: 'center' },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
+  },
+  stepCircleActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  stepNumber: { fontSize: Typography.sm, fontWeight: '700', color: Colors.textMuted },
+  stepNumberActive: { color: Colors.white },
+  stepText: { fontSize: Typography.xs, color: Colors.textMuted, textAlign: 'center' },
+  stepTextActive: { color: Colors.textPrimary, fontWeight: '700' },
+  sectionTitle: { fontSize: Typography.heading, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.md },
+  formCard: {
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    ...Shadow.sm,
+  },
+  field: { marginBottom: Spacing.md },
+  inputLabel: { fontSize: Typography.label, color: Colors.textSecondary, fontWeight: '700', marginBottom: Spacing.xs },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  prefix: {
+    backgroundColor: Colors.bgInput,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+  },
+  prefixText: { fontSize: Typography.base, fontWeight: '700', color: Colors.textPrimary },
+  phoneInput: { flex: 1, marginBottom: 0 },
+  ctaButton: { marginTop: Spacing.sm },
+  disclaimer: { fontSize: Typography.caption, color: Colors.textMuted, marginTop: Spacing.sm, textAlign: 'center', lineHeight: 18 },
+  otpIntro: { fontSize: Typography.base, color: Colors.textSecondary, marginBottom: Spacing.md },
+  resend: { textAlign: 'center', color: Colors.primary, fontWeight: '700', marginTop: Spacing.md, fontSize: Typography.sm },
+  resendDisabled: { opacity: 0.5 },
+  signInText: { color: Colors.secondary, fontWeight: '700', fontSize: Typography.sm, marginTop: Spacing.md, textAlign: 'center' },
 });
 
 export default RetailerRegisterScreen;

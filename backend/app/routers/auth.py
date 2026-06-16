@@ -135,17 +135,27 @@ async def create_vendor(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Admin creates a Vendor account; system sends OTP to vendor mobile."""
+    """Admin creates a Vendor account with a password."""
     svc = AuthService(db)
-    otp_svc = OTPService(db)
     audit = AuditService(db)
     try:
         user = await svc.create_vendor(req.model_dump())
-        await otp_svc.send_otp(req.mobile, "register")
         await audit.log_action(current_user, "create_vendor", "vendor", user.id)
         return user
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/vendor/auth/password-login", response_model=TokenResponse)
+async def vendor_password_login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """Vendor login via mobile + password."""
+    svc = AuthService(db)
+    try:
+        return await svc.vendor_password_login(req.mobile, req.password)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
 
 
 @router.post("/vendor/auth/login")

@@ -17,6 +17,7 @@ class OrderStatus(str, enum.Enum):
     DISPATCHED = "dispatched"
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
+    RETURNED = "returned"
 
 
 class Order(BaseModel):
@@ -40,6 +41,8 @@ class Order(BaseModel):
     voice_clip_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     eway_bill_no: Mapped[str | None] = mapped_column(String(50), nullable=True)
     eway_bill_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    return_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    return_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user = relationship("User", lazy="selectin")
     items = relationship("OrderItem", back_populates="order", lazy="selectin")

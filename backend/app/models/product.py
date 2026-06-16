@@ -46,6 +46,7 @@ class Product(BaseModel):
     __tablename__ = "products"
     __table_args__ = (
         Index("ix_products_category_id", "category_id"),
+        Index("ix_products_sub_category_id", "sub_category_id"),
         Index("ix_products_sku", "sku", unique=True, postgresql_where="is_deleted = false"),
         Index("ix_products_search", "search_vector", postgresql_using="gin"),
     )
@@ -55,6 +56,8 @@ class Product(BaseModel):
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
     sku: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    return_policy: Mapped[str | None] = mapped_column(String(255), default="No returns allowed", nullable=True)
+    return_window_days: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
     unit: Mapped[str] = mapped_column(String(50), default="piece", nullable=False)
     hsn_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
@@ -86,12 +89,17 @@ class Product(BaseModel):
         ForeignKey("categories.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    sub_category_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # ── Full-text Search ─────────────────────────────────────
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
 
     # ── Relationships ────────────────────────────────────────
-    category = relationship("Category", back_populates="products")
+    category = relationship("Category", foreign_keys=[category_id], back_populates="products")
+    sub_category = relationship("Category", foreign_keys=[sub_category_id])
     images = relationship("ProductImage", back_populates="product", lazy="selectin", order_by="ProductImage.sort_order")
     vendor_pricing = relationship("VendorPricing", back_populates="product", lazy="selectin", uselist=False)
     retailer_pricing = relationship("RetailerPricing", back_populates="product", lazy="selectin", uselist=False)

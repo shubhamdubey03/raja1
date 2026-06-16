@@ -12,6 +12,7 @@ import Inventory from '../pages/Inventory';
 import Schemes from '../pages/Schemes';
 import Reports from '../pages/Reports';
 import AdminUsers from '../pages/AdminUsers';
+import Categories from '../pages/Categories';
 import Settings from '../pages/Settings';
 
 const ProtectedRoute = ({ children }) => {
@@ -29,6 +30,7 @@ const AppRoutes = () => {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<Products />} />
+        <Route path="categories" element={<Categories />} />
         <Route path="orders" element={<Orders />} />
         <Route path="users" element={<Users />} />
         <Route path="ledger" element={<Ledger />} />

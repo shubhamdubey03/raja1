@@ -38,6 +38,7 @@ class VendorCreateRequest(BaseModel):
     mobile: str = Field(..., min_length=10, max_length=15)
     full_name: str = Field(..., min_length=2, max_length=255)
     business_name: str = Field(..., min_length=2, max_length=255)
+    password: str = Field(..., min_length=6, max_length=128)
     gst_number: Optional[str] = None
     pan_number: Optional[str] = None
     address: Optional[str] = None

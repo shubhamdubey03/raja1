@@ -32,6 +32,7 @@ from app.schemas.order import (
     ManualPaymentRequest,
     OrderCreateRequest,
     OrderResponse,
+    OrderReturnRequest,
     OrderStatusUpdate,
     PaymentResponse,
     PaymentInitiateRequest,
@@ -257,6 +258,11 @@ async def get_cart(db: AsyncSession = Depends(get_db), current_user: User = Depe
         cart = Cart(user_id=current_user.id)
         db.add(cart)
         await db.flush()
+        # Re-query to populate preloaded relationships (items)
+        result = await db.execute(
+            select(Cart).where(Cart.id == cart.id)
+        )
+        cart = result.scalar_one()
     return cart
 
 
@@ -978,3 +984,100 @@ async def payment_webhook(
             await db.flush()
 
     return {"status": "ok"}
+
+
+@router.post("/orders/{order_id}/return", response_model=OrderResponse)
+async def return_order(
+    order_id: UUID,
+    req: OrderReturnRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retailer or admin returns a delivered order."""
+    query = select(Order).where(Order.id == order_id, Order.is_deleted == False)
+    if current_user.role not in (UserRole.SUPER_ADMIN, UserRole.ADMIN):
+        query = query.where(Order.user_id == current_user.id)
+    result = await db.execute(query)
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status != OrderStatus.DELIVERED:
+        raise HTTPException(
+            status_code=400,
+            detail="Only delivered orders can be returned"
+        )
+
+    # Validate return window days for each product
+    now = datetime.now(timezone.utc)
+    time_elapsed = now - order.updated_at
+    days_elapsed = time_elapsed.total_seconds() / (24 * 3600)
+
+    for item in order.items:
+        prod = item.product
+        if prod:
+            # Check product return window days (managed by admin panel)
+            if days_elapsed > prod.return_window_days:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Return window of {prod.return_window_days} days for product '{prod.name}' has expired. It was delivered {int(days_elapsed)} days ago."
+                )
+
+    old_status = order.status.value
+    order.status = OrderStatus.RETURNED
+    order.return_image_url = req.return_image_url
+    order.return_reason = req.return_reason
+
+    # Release/Return stock
+    for item in order.items:
+        prod_q = await db.execute(select(Product).where(Product.id == item.product_id).with_for_update())
+        product = prod_q.scalar_one_or_none()
+        if product:
+            product.stock_qty += item.quantity
+
+    # Create ledger credit entry to refund the amount
+    ledger = LedgerEntry(
+        user_id=order.user_id,
+        entry_type=LedgerType.CREDIT,
+        amount=order.grand_total,
+        reference_type="order_return",
+        reference_id=order.id,
+        description=f"Refund for returned Order #{order.order_number}",
+    )
+    db.add(ledger)
+
+    await db.flush()
+
+    # Log action
+    audit = AuditService(db)
+    await audit.log_action(
+        current_user, "return_order", "order", order.id,
+        {"old_status": old_status, "new_status": "returned", "return_image_url": req.return_image_url, "return_reason": req.return_reason}
+    )
+
+    # Notify superadmins & admins
+    try:
+        from app.services.notification_service import NotificationService
+        notif_svc = NotificationService(db)
+        admin_users_res = await db.execute(
+            select(User.id).where(
+                User.role.in_([UserRole.ADMIN, UserRole.SUPER_ADMIN]),
+                User.is_deleted == False
+            )
+        )
+        admin_ids = admin_users_res.scalars().all()
+        for admin_id in admin_ids:
+            await notif_svc.create_notification(
+                user_id=admin_id,
+                title="Order Returned",
+                body=f"Order #{order.order_number} has been returned by {current_user.full_name}.",
+                notification_type="order",
+                reference_id=order.id
+            )
+    except Exception as e:
+        import structlog
+        structlog.get_logger().error("failed_to_send_return_order_notification", error=str(e), order_id=str(order.id))
+
+    await db.refresh(order)
+    return order
+

@@ -164,6 +164,7 @@ from app.routers.order import router as order_router  # noqa: E402
 from app.routers.admin import router as admin_router  # noqa: E402
 from app.routers.discount import router as discount_router  # noqa: E402
 from app.routers.notification import router as notification_router  # noqa: E402
+from app.api.v1.categories import router as category_router  # noqa: E402
 
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(product_router, prefix=settings.api_v1_prefix)
@@ -171,3 +172,4 @@ app.include_router(order_router, prefix=settings.api_v1_prefix)
 app.include_router(admin_router, prefix=settings.api_v1_prefix)
 app.include_router(discount_router, prefix=settings.api_v1_prefix)
 app.include_router(notification_router, prefix=settings.api_v1_prefix)
+app.include_router(category_router, prefix=settings.api_v1_prefix)
