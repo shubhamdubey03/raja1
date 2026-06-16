@@ -1,6 +1,6 @@
 // /** Server host — matches api.ts BASE_URL */
-const SERVER_HOST = 'raja1-glbd.onrender.com';
-// const SERVER_HOST = '192.168.1.38:8000';
+// const SERVER_HOST = 'raja1-glbd.onrender.com';
+const SERVER_HOST = '192.168.1.38:8000';
 
 
 /**

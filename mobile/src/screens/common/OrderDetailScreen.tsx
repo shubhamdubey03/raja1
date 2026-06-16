@@ -256,7 +256,15 @@ const OrderDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route, n
             <View key={item.id || index} style={[styles.itemRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={styles.itemLeft}>
-                  <Package size={20} color={Colors.textSecondary} />
+                  {item.product_image_url ? (
+                    <Image
+                      source={{ uri: normalizeImageUrl(item.product_image_url) || undefined }}
+                      style={{ width: 32, height: 32, borderRadius: Radius.sm }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Package size={20} color={Colors.textSecondary} />
+                  )}
                   <View style={styles.itemDetails}>
                     <Text style={styles.itemName}>{item.product_name || 'Product'}</Text>
                     <Text style={styles.itemSub}>
@@ -318,7 +326,7 @@ const OrderDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route, n
         )}
 
         {/* Return Order block */}
-        {status === 'delivered' && (
+        {status === 'delivered' && user?.role === 'retailer' && (
           <TouchableOpacity
             style={styles.returnBtn}
             onPress={handleReturnOrder}
