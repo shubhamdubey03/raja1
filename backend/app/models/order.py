@@ -72,7 +72,7 @@ class OrderItem(BaseModel):
         try:
             if not self.product:
                 return None
-            images = self.product.__dict__.get('images', [])
+            images = self.product.images
             return images[0].image_url if images else None
         except Exception:
             return None
