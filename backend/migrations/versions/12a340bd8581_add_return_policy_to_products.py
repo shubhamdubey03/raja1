@@ -18,25 +18,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "products",
-        sa.Column(
-            "return_policy",
-            sa.String(length=255),
-            nullable=True
-        )
-    )
+    conn = op.get_bind()
+    
+    # Check karo column exist karta hai ya nahi
+    result = conn.execute(sa.text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='products' AND column_name='return_policy'"
+    ))
+    if not result.fetchone():
+        op.add_column('products',
+            sa.Column('return_policy', sa.String(length=255), nullable=True))
 
-    op.add_column(
-        "products",
-        sa.Column(
-            "return_window_days",
-            sa.Integer(),
-            nullable=False,
-            server_default="7"
-        )
-    )
-
+    result = conn.execute(sa.text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='products' AND column_name='return_window_days'"
+    ))
+    if not result.fetchone():
+        op.add_column('products',
+            sa.Column('return_window_days', sa.Integer(), nullable=False, server_default='7'))
 
 def downgrade() -> None:
     op.drop_column("products", "return_window_days")
