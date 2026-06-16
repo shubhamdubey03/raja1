@@ -326,7 +326,7 @@ const OrderDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route, n
         )}
 
         {/* Return Order block */}
-        {status === 'delivered' && user?.role === 'retailer' && (
+        {status === 'delivered' && (user?.role === 'retailer' || user?.role === 'vendor') && (
           <TouchableOpacity
             style={styles.returnBtn}
             onPress={handleReturnOrder}
