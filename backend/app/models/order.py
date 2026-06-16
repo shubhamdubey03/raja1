@@ -76,3 +76,11 @@ class OrderItem(BaseModel):
             return images[0].image_url if images else None
         except Exception:
             return None
+
+    @property
+    def return_policy(self) -> str | None:
+        return self.product.return_policy if self.product else "No returns allowed"
+
+    @property
+    def return_window_days(self) -> int:
+        return self.product.return_window_days if self.product else 7

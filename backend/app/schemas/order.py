@@ -67,6 +67,8 @@ class OrderItemResponse(BaseModel):
     gst_rate: int
     line_total: int
     gst_amount: int
+    return_policy: Optional[str] = None
+    return_window_days: Optional[int] = None
     model_config = {"from_attributes": True}
 
 
