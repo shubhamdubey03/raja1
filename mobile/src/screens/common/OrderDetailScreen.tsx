@@ -253,17 +253,31 @@ const OrderDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route, n
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Order Items</Text>
           {order.items?.map((item: any, index: number) => (
-            <View key={item.id || index} style={styles.itemRow}>
-              <View style={styles.itemLeft}>
-                <Package size={20} color={Colors.textSecondary} />
-                <View style={styles.itemDetails}>
-                  <Text style={styles.itemName}>{item.product_name || 'Product'}</Text>
-                  <Text style={styles.itemSub}>
-                    {item.quantity} units x {formatINR(item.unit_price)}
-                  </Text>
+            <View key={item.id || index} style={[styles.itemRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={styles.itemLeft}>
+                  <Package size={20} color={Colors.textSecondary} />
+                  <View style={styles.itemDetails}>
+                    <Text style={styles.itemName}>{item.product_name || 'Product'}</Text>
+                    <Text style={styles.itemSub}>
+                      {item.quantity} units x {formatINR(item.unit_price)}
+                    </Text>
+                  </View>
                 </View>
+                <Text style={styles.itemTotal}>{formatINR(item.line_total)}</Text>
               </View>
-              <Text style={styles.itemTotal}>{formatINR(item.line_total)}</Text>
+              
+              {/* Return Policy Display */}
+              <View style={{ marginLeft: 32, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 10, color: Colors.textMuted, backgroundColor: '#FAF7F5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: Colors.border }}>
+                  🛡️ Policy: {item.return_policy || 'No returns'}
+                </Text>
+                {item.return_window_days !== undefined && (
+                  <Text style={{ fontSize: 10, color: Colors.textMuted, backgroundColor: '#FAF7F5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: Colors.border }}>
+                    ⏱️ Window: {item.return_window_days} days
+                  </Text>
+                )}
+              </View>
             </View>
           ))}
         </View>

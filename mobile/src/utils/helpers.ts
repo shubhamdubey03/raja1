@@ -1,6 +1,6 @@
 // /** Server host — matches api.ts BASE_URL */
-// const SERVER_HOST = 'raja1-glbd.onrender.com';
-const SERVER_HOST = '192.168.1.38:8000';
+const SERVER_HOST = 'raja1-glbd.onrender.com';
+// const SERVER_HOST = '192.168.1.38:8000';
 
 
 /**
@@ -13,7 +13,7 @@ export const normalizeImageUrl = (url: string | null | undefined): string | null
   let normalized = url
     .replace(/localhost:\d+/, SERVER_HOST)
     .replace(/127\.0\.0\.1:\d+/, SERVER_HOST);
-  
+
   // Only convert http to https if it's not a local IP address or localhost
   if (!normalized.includes('192.168.') && !normalized.includes('10.') && !normalized.includes('172.') && !normalized.includes('localhost') && !normalized.includes('127.0.0.1')) {
     normalized = normalized.replace(/^http:/, 'https:');
